@@ -1,0 +1,11 @@
+{
+    "name": "English (United States)",
+    "universalName": "English (United States)",
+    "identifier": "en-US",
+    "translations": {
+        "viewAccountLoginTitle": "Login",
+        "viewAccountLoginEmail": "Email:",
+        "viewAccountLoginPassword": "Password:",
+        "viewAccountLoginSubmit": "Login"
+    }
+}
