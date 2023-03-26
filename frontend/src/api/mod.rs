@@ -4,6 +4,9 @@ use gloo_net::http::{Request, Response};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use uuid::Uuid;
+use yew::prelude::*;
+
+use crate::app;
 
 static API_ENDPOINT: &str = "http://127.0.0.1:9080/api/v1/";
 static REFRESH_TOKEN: Lazy<ArcCell<Uuid>> = Lazy::new(ArcCell::default);
@@ -99,7 +102,7 @@ impl ApiRequest {
         }
     }
 
-    pub fn send<F, T>(self, callback: F)
+    pub fn send<F, T>(self, _app_callback: Callback<app::Msg>, callback: F)
         where
             F: FnOnce(ApiResponse<T>) + 'static,
             T: DeserializeOwned

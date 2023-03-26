@@ -42,21 +42,30 @@ pub async fn get_language_async() -> Arc<Language> {
     language
 }
 
-pub fn get_language() -> SuspensionResult<Arc<Language>> {
-    if let Some(current) = Option::as_ref(&CURRENT_LANGUAGE.get()) {
-        return Ok(current.clone())
+pub fn init_language() -> SuspensionResult<()> {
+    if Option::as_ref(&CURRENT_LANGUAGE.get()).is_some() {
+        return Ok(())
     }
 
     let suspension = Suspension::from_future(async {
         get_language_async().await;
     });
     if suspension.resumed() {
-        if let Some(current) = Option::as_ref(&CURRENT_LANGUAGE.get()) {
-            Ok(current.clone())
+        if Option::as_ref(&CURRENT_LANGUAGE.get()).is_some() {
+            Ok(())
         } else {
             unreachable!("Unable to get language.")
         }
     } else {
         Err(suspension)
     }
+}
+
+pub fn get_language() -> Arc<Language> {
+    if let Some(current) = Option::as_ref(&CURRENT_LANGUAGE.get()) {
+        return current.clone()
+    }
+
+    log::error!("Function init_language() was not called.");
+    Arc::new(Default::default())
 }
