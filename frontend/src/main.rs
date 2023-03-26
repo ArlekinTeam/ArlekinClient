@@ -1,6 +1,9 @@
 use account::login::Login;
 use yew::prelude::*;
+
+pub mod api;
 pub mod account;
+pub mod helpers;
 pub mod localization;
 
 #[function_component(App)]
