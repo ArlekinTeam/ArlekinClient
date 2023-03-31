@@ -8,7 +8,9 @@ pub enum Route {
     #[at("/")]
     Home,
     #[at("/login")]
-    Login
+    Login,
+    #[at("/friends")]
+    Friends
 }
 
 #[derive(Properties, PartialEq, Clone)]

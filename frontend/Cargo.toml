@@ -22,3 +22,4 @@ uuid = { version = "1.3.0", features = ["v4", "serde"] }
 wasm-bindgen-futures = "0.4.34"
 getrandom = { version = "0.2", features = ["js"] }
 yew-router = "0.17.0"
+serde_repr = "0.1.12"

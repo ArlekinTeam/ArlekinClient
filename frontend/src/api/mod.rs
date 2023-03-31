@@ -3,13 +3,20 @@ use arc_cell::ArcCell;
 use gloo_net::http::{Request, Response};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde_repr::{Serialize_repr, Deserialize_repr};
 use uuid::Uuid;
 use yew::prelude::*;
 
 use crate::app;
 
-static API_ENDPOINT: &str = "http://127.0.0.1:9080/api/v1/";
+static API_ENDPOINT: &str = "http://localhost:9080/api/v1/";
 static REFRESH_TOKEN: Lazy<ArcCell<Uuid>> = Lazy::new(ArcCell::default);
+
+#[derive(Serialize_repr, Deserialize_repr)]
+#[repr(u32)]
+pub enum Platform {
+    Native = 0
+}
 
 pub struct ApiRequest {
     inner: Request
@@ -50,6 +57,14 @@ pub fn post(endpoint: &str) -> ApiRequest {
     ApiRequest { inner: Request::post(final_endpoint(endpoint).as_str()) }
 }
 
+pub fn put(endpoint: &str) -> ApiRequest {
+    ApiRequest { inner: Request::put(final_endpoint(endpoint).as_str()) }
+}
+
+pub fn delete(endpoint: &str) -> ApiRequest {
+    ApiRequest { inner: Request::delete(final_endpoint(endpoint).as_str()) }
+}
+
 fn final_endpoint(endpoint: &str) -> String {
     format!("{API_ENDPOINT}{endpoint}")
 }
@@ -74,8 +89,9 @@ impl ApiRequest {
 
     pub async fn send_async(self) -> Response {
         let response = self.inner
-            .header("Access-Control-Allow-Origin", "*")
-            .header("Access-Control-Allow-Credentials", "true")
+            //.credentials(web_sys::RequestCredentials::Include)
+            //.header("Access-Control-Allow-Origin", "*")
+            //.header("Access-Control-Allow-Credentials", "true")
             .header("Content-Type", "application/json")
             .send().await.expect("Unable to send API request.");
 
@@ -111,6 +127,20 @@ impl ApiRequest {
             let response = self.send_async().await;
             match response.status() {
                 200 => callback(ApiResponse::Ok(response.json::<T>().await.unwrap())),
+                400 => callback(ApiResponse::BadRequest(response.json::<ErrorData>().await.unwrap().errors)),
+                _ => unreachable!()
+            };
+        });
+    }
+
+    pub fn send_without_ok<F>(self, _app_callback: Callback<app::Msg>, callback: F)
+        where
+            F: FnOnce(ApiResponse<()>) + 'static,
+    {
+        wasm_bindgen_futures::spawn_local(async move {
+            let response = self.send_async().await;
+            match response.status() {
+                200 => callback(ApiResponse::Ok(())),
                 400 => callback(ApiResponse::BadRequest(response.json::<ErrorData>().await.unwrap().errors)),
                 _ => unreachable!()
             };

@@ -1,0 +1,85 @@
+@font-face {
+    font-family: OpenSans;
+    src: url(/static/fonts/OpenSans-Bold.ttf);
+    font-weight: bold;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: OpenSans;
+    src: url(/static/fonts/OpenSans-ExtraBold.ttf);
+    font-weight: 800;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: OpenSans;
+    src: url(/static/fonts/OpenSans-Light.ttf);
+    font-weight: 300;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: OpenSans;
+    src: url(/static/fonts/OpenSans-Medium.ttf);
+    font-weight: 500;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: OpenSans;
+    src: url(/static/fonts/OpenSans-Regular.ttf);
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: OpenSans;
+    src: url(/static/fonts/OpenSans-SemiBold.ttf);
+    font-weight: 600;
+    font-style: normal;
+}
+
+.noselect {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.select {
+    -webkit-touch-callout: text;
+    -webkit-user-select: text;
+    -khtml-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+body {
+    background-color: var(--background);
+    color: var(--text);
+    font-family: 'Open Sans', sans-serif;
+    line-height: 1.5em;
+}
+
+button {
+    background-color: var(--button-color);
+    color: var(--button-text-color);
+    border: none;
+    cursor: pointer;
+    padding: 1em;
+    border-radius: 7.5px;
+}
+
+button:hover {
+    background-color: var(--button-hover-color);
+    color: var(--button-hover-text-color);
+}
+
+.button-selected {
+    background-color: var(--button-selected-color);
+    color: var(--button-selected-text-color);
+}

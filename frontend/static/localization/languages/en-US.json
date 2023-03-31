@@ -6,6 +6,22 @@
         "viewAccountLoginTitle": "Login",
         "viewAccountLoginEmail": "Email:",
         "viewAccountLoginPassword": "Password:",
-        "viewAccountLoginSubmit": "Login"
+        "viewAccountLoginSubmit": "Login",
+
+        "viewAccountFriendsTitle": "Friends",
+        "viewAccountFriendsOnline": "Online",
+        "viewAccountFriendsAll": "All",
+        "viewAccountFriendsPending": "Pending",
+        "viewAccountFriendsAdd": "Add Friend",
+
+        "viewAccountFriendRequestsInput": "Enter the username of the user:",
+        "viewAccountFriendRequestsSubmit": "Send friend request",
+        "viewAccountFriendRequestsReceived": "Received friend requests",
+        "viewAccountFriendRequestsSent": "Sent friend requests",
+        "viewAccountFriendRequestsSentSuccess": "Successfully sent friend request",
+        "viewAccountFriendRequestsAccept": "Accept",
+        "viewAccountFriendRequestsReject": "Reject",
+        "viewAccountFriendRequestsCancel": "Cancel",
+        "viewAccountFriendRequestsEmpty": "Oops... no friend requests! Add someone!"
     }
 }

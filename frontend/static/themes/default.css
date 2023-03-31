@@ -1,0 +1,15 @@
+:root {
+    --background: #322f36;
+    --text: #dbdee1;
+
+    --background-brighter: #47444a;
+
+    --button-color: #322f36;
+    --button-hover-color: #4c4850;
+    --button-selected-color: #5e5a62;
+    --button-text-color: #8b9199;
+    --button-hover-text-color: #dbdee1;
+    --button-selected-text-color: white;
+
+    --button-darker-color: #232126;
+}

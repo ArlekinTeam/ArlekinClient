@@ -1,7 +1,7 @@
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use crate::{account::login::Login, localization, route::{Route, self}};
+use crate::{account::{login::Login, friends_views::friends::Friends}, localization, route::{Route, self}};
 
 pub struct App {
     logged_in: bool
@@ -34,15 +34,14 @@ impl Component for App {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        let app_callback = ctx.link().callback(|m| m);
         if self.logged_in {
             html! {
                 <>
-                    <route::Router route={Route::Home} />
-                    <h1>{"Logged in"}</h1>
+                    <Friends app_callback={app_callback} />
                 </>
             }
         } else {
-            let app_callback = ctx.link().callback(|m| m);
             html! { <Login {app_callback} /> }
         }
     }

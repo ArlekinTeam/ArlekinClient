@@ -7,10 +7,12 @@ use yew::prelude::*;
 use crate::{localization, helpers::prelude::*, api::{self, ApiResponse}, app, route::{Router, Route}};
 
 pub struct Login {
-    props: Props
+    props: Props,
+    status: Html
 }
 
 pub enum Msg {
+    SetStatus(Html),
     Submit
 }
 
@@ -31,16 +33,21 @@ impl Component for Login {
     type Properties = Props;
 
     fn create(ctx: &Context<Self>) -> Self {
-        Self { props: ctx.props().clone() }
+        Self {
+            props: ctx.props().clone(),
+            status: Default::default()
+        }
     }
 
-    fn update(&mut self, _: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
+            Msg::SetStatus(status) => self.status = status,
             Msg::Submit => {
-                self.submit();
-                false
+                self.submit(ctx);
+                return false;
             }
-        }
+        };
+        true
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
@@ -61,14 +68,14 @@ impl Component for Login {
                 <br/><br/>
                 <button onclick={ctx.link().callback(|_| Msg::Submit)}>{lang.get("viewAccountLoginSubmit")}</button>
 
-                <p id="loginStatus"></p>
+                {self.status.clone()}
             </>
         }
     }
 }
 
 impl Login {
-    fn submit(&self) {
+    fn submit(&self, ctx: &Context<Self>) {
         let email = Input::by_id("email").value();
         let password = Input::by_id("password").value();
 
@@ -83,6 +90,7 @@ impl Login {
         let password_hash_string = password_hash.iter().map(|&x| x as char).collect::<String>();
 
         let app_callback = self.props.app_callback.clone();
+        let status = ctx.link().callback(Msg::SetStatus);
 
         api::post("accounts/auth/login").body(&json!({
             "email": email,
@@ -95,22 +103,10 @@ impl Login {
                     r.message_encryption_salt.to_le_bytes().iter().map(|&x| x as char).collect::<String>()
                 ).as_bytes(), &mut message_encryption_hash).unwrap();
 
-                Element::by_id("loginStatus").set_inner_html(
-                    &message_encryption_hash.iter().map(|&x| x as char).collect::<String>()
-                );
-
                 app_callback.emit(app::Msg::Login);
             },
             ApiResponse::BadRequest(err) => {
-                let mut message = String::new();
-                for (key, value) in err {
-                    message.push_str(&key);
-                    message.push_str(": ");
-                    message.push_str(&value.translation_key);
-                    message.push_str("<br>");
-                }
-
-                Element::by_id("loginStatus").set_inner_html(&message);
+                status.emit(Status::with_err(err));
             },
         });
     }
