@@ -1,7 +1,9 @@
 use yew::prelude::*;
 
 use crate::{
-    account::friends_views::{add_friend::AddFriend, friend_requests::FriendRequests},
+    account::friends_views::{
+        add_friend::AddFriend, friend_requests::FriendRequests, friends_list::FriendsList,
+    },
     app, localization,
     route::{self, Route},
 };
@@ -48,8 +50,8 @@ impl Component for Friends {
 
         let app_callback = self.props.app_callback.clone();
         let content = match self.state {
-            Msg::Online => html! {},
-            Msg::All => html! {},
+            Msg::Online => html! { <FriendsList {app_callback} /> },
+            Msg::All => html! { <FriendsList {app_callback} /> },
             Msg::Pending => html! { <FriendRequests {app_callback} /> },
             Msg::Add => html! { <AddFriend {app_callback} /> },
         };

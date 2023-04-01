@@ -11,7 +11,6 @@ use crate::{
 pub struct FriendRequests {
     props: Props,
     data: Option<FriendRequestsLoadResponseData>,
-    status: Html,
 }
 
 #[derive(Properties, PartialEq, Clone)]
@@ -20,10 +19,10 @@ pub struct Props {
 }
 
 pub enum Msg {
-    SetStatus(Html),
     Reload,
     Load(FriendRequestsLoadResponseData),
     Reject(i64),
+    Accept(i64),
 }
 
 #[derive(Serialize, Deserialize)]
@@ -41,7 +40,6 @@ impl Component for FriendRequests {
         let s = Self {
             props: ctx.props().clone(),
             data: None,
-            status: Default::default(),
         };
         s.load(ctx);
         s
@@ -49,11 +47,14 @@ impl Component for FriendRequests {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::SetStatus(status) => self.status = status,
             Msg::Reload => self.load(ctx),
             Msg::Load(data) => self.data = Some(data),
             Msg::Reject(requested_friend_user_id) => {
                 self.reject(ctx, requested_friend_user_id);
+                return false;
+            }
+            Msg::Accept(requested_friend_user_id) => {
+                self.accept(ctx, requested_friend_user_id);
                 return false;
             }
         };
@@ -80,7 +81,9 @@ impl Component for FriendRequests {
                                 />
 
                                 <div>
-                                    <button>{lang.get("viewAccountFriendRequestsAccept")}</button>
+                                    <button onclick={ctx.link().callback(move |_| Msg::Accept(user_id))}>{
+                                        lang.get("viewAccountFriendRequestsAccept")
+                                    }</button>
                                     <button onclick={ctx.link().callback(move |_| Msg::Reject(user_id))}>{
                                         lang.get("viewAccountFriendRequestsReject")
                                     }</button>
@@ -144,6 +147,19 @@ impl FriendRequests {
         let callback = ctx.link().callback(|_: ()| Msg::Reload);
 
         api::delete("accounts/friendrequests")
+            .body(&json!({
+                "requestedFriendUserId": requested_friend_user_id
+            }))
+            .send_without_ok(self.props.app_callback.clone(), move |r| match r {
+                ApiResponse::Ok(_) => callback.emit(()),
+                ApiResponse::BadRequest(_) => todo!(),
+            });
+    }
+
+    fn accept(&self, ctx: &Context<Self>, requested_friend_user_id: i64) {
+        let callback = ctx.link().callback(|_: ()| Msg::Reload);
+
+        api::post("accounts/friendrequests")
             .body(&json!({
                 "requestedFriendUserId": requested_friend_user_id
             }))

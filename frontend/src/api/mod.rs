@@ -10,7 +10,7 @@ use yew::prelude::*;
 
 use crate::app;
 
-const DOMAIN: &str = "https://test-fsqa7u.noisestudio.net";
+const DOMAIN: &str = "http://localhost:9080"; //"https://test-fsqa7u.noisestudio.net";
 const API_ENDPOINT: &str = concatcp!(DOMAIN, "/api/v1/");
 static REFRESH_TOKEN: Lazy<ArcCell<Uuid>> = Lazy::new(ArcCell::default);
 
