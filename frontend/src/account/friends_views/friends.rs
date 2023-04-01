@@ -1,13 +1,14 @@
 use yew::prelude::*;
 
 use crate::{
-    route::{self, Route}, localization,
-    account::friends_views::{add_friend::AddFriend, friend_requests::FriendRequests}, app
+    account::friends_views::{add_friend::AddFriend, friend_requests::FriendRequests},
+    app, localization,
+    route::{self, Route},
 };
 
 pub struct Friends {
     props: Props,
-    state: Msg
+    state: Msg,
 }
 
 #[derive(PartialEq)]
@@ -15,12 +16,12 @@ pub enum Msg {
     Online,
     All,
     Pending,
-    Add
+    Add,
 }
 
 #[derive(Properties, PartialEq, Clone)]
 pub struct Props {
-    pub app_callback: Callback<app::Msg>
+    pub app_callback: Callback<app::Msg>,
 }
 
 impl Component for Friends {
@@ -30,7 +31,7 @@ impl Component for Friends {
     fn create(ctx: &Context<Self>) -> Self {
         Self {
             props: ctx.props().clone(),
-            state: Msg::Online
+            state: Msg::Online,
         }
     }
 
@@ -90,6 +91,7 @@ impl Friends {
         match self.state == expected {
             true => "button-selected",
             false => "",
-        }.to_owned()
+        }
+        .to_owned()
     }
 }

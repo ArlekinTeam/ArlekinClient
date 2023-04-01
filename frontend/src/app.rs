@@ -1,15 +1,19 @@
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use crate::{account::{login::Login, friends_views::friends::Friends}, localization, route::{Route, self}};
+use crate::{
+    account::{friends_views::friends::Friends, login::Login},
+    localization,
+    route::{self, Route},
+};
 
 pub struct App {
-    logged_in: bool
+    logged_in: bool,
 }
 
 pub enum Msg {
     Login,
-    Logout
+    Logout,
 }
 
 impl Component for App {
@@ -25,7 +29,7 @@ impl Component for App {
             Msg::Login => {
                 self.logged_in = true;
                 true
-            },
+            }
             Msg::Logout => {
                 self.logged_in = false;
                 true

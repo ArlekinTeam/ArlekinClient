@@ -1,8 +1,8 @@
-use std::sync::Arc;
-use yew::{suspense::{SuspensionResult, Suspension}};
 use arc_cell::ArcCell;
-use once_cell::sync::Lazy;
 use gloo_net::{http::Request, Error};
+use once_cell::sync::Lazy;
+use std::sync::Arc;
+use yew::suspense::{Suspension, SuspensionResult};
 
 use self::language::Language;
 
@@ -11,18 +11,26 @@ pub mod language;
 static CURRENT_LANGUAGE: Lazy<ArcCell<Option<Arc<Language>>>> = Lazy::new(ArcCell::default);
 
 pub async fn get_language_from_code_async(language: &str) -> Result<Language, Error> {
-    let response = match Request::get(
-        format!("/static/localization/languages/{language}.json").as_str()
-    ).send().await {
-        Ok(r) => {
-            if r.ok() {
-                r
-            } else {
-                Request::get("/static/localization/languages/en-US.json").send().await.unwrap()
+    let response =
+        match Request::get(format!("/static/localization/languages/{language}.json").as_str())
+            .send()
+            .await
+        {
+            Ok(r) => {
+                if r.ok() {
+                    r
+                } else {
+                    Request::get("/static/localization/languages/en-US.json")
+                        .send()
+                        .await
+                        .unwrap()
+                }
             }
-        },
-        Err(_) => Request::get("/static/localization/languages/en-US.json").send().await.unwrap(),
-    };
+            Err(_) => Request::get("/static/localization/languages/en-US.json")
+                .send()
+                .await
+                .unwrap(),
+        };
 
     if !response.ok() {
         log::error!("Language failed to load.");
@@ -34,7 +42,7 @@ pub async fn get_language_from_code_async(language: &str) -> Result<Language, Er
 
 pub async fn get_language_async() -> Arc<Language> {
     if let Some(current) = Option::as_ref(&CURRENT_LANGUAGE.get()) {
-        return current.clone()
+        return current.clone();
     }
 
     let language = Arc::new(get_language_from_code_async("en-US").await.unwrap());
@@ -44,7 +52,7 @@ pub async fn get_language_async() -> Arc<Language> {
 
 pub fn init_language() -> SuspensionResult<()> {
     if Option::as_ref(&CURRENT_LANGUAGE.get()).is_some() {
-        return Ok(())
+        return Ok(());
     }
 
     let suspension = Suspension::from_future(async {
@@ -63,7 +71,7 @@ pub fn init_language() -> SuspensionResult<()> {
 
 pub fn get_language() -> Arc<Language> {
     if let Some(current) = Option::as_ref(&CURRENT_LANGUAGE.get()) {
-        return current.clone()
+        return current.clone();
     }
 
     log::error!("Function init_language() was not called.");

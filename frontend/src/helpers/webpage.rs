@@ -1,7 +1,6 @@
-use web_sys::{Window, Document};
+use web_sys::{Document, Window};
 
-pub struct WebPage {
-}
+pub struct WebPage {}
 
 impl WebPage {
     #[inline]

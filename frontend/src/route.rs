@@ -1,5 +1,5 @@
-use yew_router::prelude::*;
 use yew::prelude::*;
+use yew_router::prelude::*;
 
 use crate::app::App;
 
@@ -10,12 +10,12 @@ pub enum Route {
     #[at("/login")]
     Login,
     #[at("/friends")]
-    Friends
+    Friends,
 }
 
 #[derive(Properties, PartialEq, Clone)]
 pub struct Props {
-    pub route: Route
+    pub route: Route,
 }
 
 pub fn switch(_: Route) -> Html {

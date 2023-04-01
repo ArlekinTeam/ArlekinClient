@@ -1,7 +1,6 @@
 use super::prelude::*;
 
-pub struct Element {
-}
+pub struct Element {}
 
 impl Element {
     #[inline]

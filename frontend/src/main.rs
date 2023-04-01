@@ -1,8 +1,8 @@
-pub mod api;
 pub mod account;
+pub mod api;
+pub mod app;
 pub mod helpers;
 pub mod localization;
-pub mod app;
 pub mod route;
 
 fn main() {

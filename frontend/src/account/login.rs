@@ -1,31 +1,37 @@
 use argon2::Argon2;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
 use yew::prelude::*;
 
-use crate::{localization, helpers::prelude::*, api::{self, ApiResponse}, app, route::{Router, Route}};
+use crate::{
+    api::{self, ApiResponse},
+    app,
+    helpers::prelude::*,
+    localization,
+    route::{Route, Router},
+};
 
 pub struct Login {
     props: Props,
-    status: Html
+    status: Html,
 }
 
 pub enum Msg {
     SetStatus(Html),
-    Submit
+    Submit,
 }
 
 #[derive(Properties, PartialEq, Clone)]
 pub struct Props {
-    pub app_callback: Callback<app::Msg>
+    pub app_callback: Callback<app::Msg>,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct LoginResponseData {
     refresh_token: Uuid,
-    message_encryption_salt: i64
+    message_encryption_salt: i64,
 }
 
 impl Component for Login {
@@ -35,7 +41,7 @@ impl Component for Login {
     fn create(ctx: &Context<Self>) -> Self {
         Self {
             props: ctx.props().clone(),
-            status: Default::default()
+            status: Default::default(),
         }
     }
 
@@ -84,30 +90,50 @@ impl Login {
         }
 
         let mut password_hash = [0u8; 32];
-        Argon2::default().hash_password_into(
-            password.as_bytes(), format!("arlekin{}login", email).as_bytes(), &mut password_hash
-        ).unwrap();
+        Argon2::default()
+            .hash_password_into(
+                password.as_bytes(),
+                format!("arlekin{}login", email).as_bytes(),
+                &mut password_hash,
+            )
+            .unwrap();
         let password_hash_string = password_hash.iter().map(|&x| x as char).collect::<String>();
 
         let app_callback = self.props.app_callback.clone();
         let status = ctx.link().callback(Msg::SetStatus);
 
-        api::post("accounts/auth/login").body(&json!({
-            "email": email,
-            "passwordHash": password_hash_string
-        })).send(app_callback.clone(), move |r: ApiResponse<LoginResponseData>| match r {
-            ApiResponse::Ok(r) => {
-                let mut message_encryption_hash = [0u8; 512];
-                Argon2::default().hash_password_into(password.as_bytes(), format!(
-                    "arlekin{}message",
-                    r.message_encryption_salt.to_le_bytes().iter().map(|&x| x as char).collect::<String>()
-                ).as_bytes(), &mut message_encryption_hash).unwrap();
+        api::post("accounts/auth/login")
+            .body(&json!({
+                "email": email,
+                "passwordHash": password_hash_string
+            }))
+            .send(
+                app_callback.clone(),
+                move |r: ApiResponse<LoginResponseData>| match r {
+                    ApiResponse::Ok(r) => {
+                        let mut message_encryption_hash = [0u8; 512];
+                        Argon2::default()
+                            .hash_password_into(
+                                password.as_bytes(),
+                                format!(
+                                    "arlekin{}message",
+                                    r.message_encryption_salt
+                                        .to_le_bytes()
+                                        .iter()
+                                        .map(|&x| x as char)
+                                        .collect::<String>()
+                                )
+                                .as_bytes(),
+                                &mut message_encryption_hash,
+                            )
+                            .unwrap();
 
-                app_callback.emit(app::Msg::Login);
-            },
-            ApiResponse::BadRequest(err) => {
-                status.emit(Status::with_err(err));
-            },
-        });
+                        app_callback.emit(app::Msg::Login);
+                    }
+                    ApiResponse::BadRequest(err) => {
+                        status.emit(Status::with_err(err));
+                    }
+                },
+            );
     }
 }

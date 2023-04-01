@@ -1,17 +1,22 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use yew::prelude::*;
 
-use crate::{localization, app, api::{self, ApiResponse, Platform}, helpers::prelude::*};
+use crate::{
+    api::{self, ApiResponse, Platform},
+    app,
+    helpers::prelude::*,
+    localization,
+};
 
 pub struct AddFriend {
     props: Props,
-    status: Html
+    status: Html,
 }
 
 #[derive(Properties, PartialEq, Clone)]
 pub struct Props {
-    pub app_callback: Callback<app::Msg>
+    pub app_callback: Callback<app::Msg>,
 }
 
 pub enum Msg {
@@ -22,7 +27,7 @@ pub enum Msg {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FriendRequestsSendResponseData {
-    receiver_user_id: i64
+    receiver_user_id: i64,
 }
 
 impl Component for AddFriend {
@@ -32,7 +37,7 @@ impl Component for AddFriend {
     fn create(ctx: &Context<Self>) -> Self {
         Self {
             props: ctx.props().clone(),
-            status: Default::default()
+            status: Default::default(),
         }
     }
 
@@ -68,19 +73,21 @@ impl AddFriend {
         let username = Input::by_id("friendRequestUsername").value();
         let status = ctx.link().callback(Msg::SetStatus);
 
-        api::put("accounts/friendrequests").body(&json!({
-            "platform": Platform::Native,
-            "userIdentifier": username
-        })).send(
-            self.props.app_callback.clone(),
-            move |r: ApiResponse<FriendRequestsSendResponseData>| match r {
-                ApiResponse::Ok(_) => {
-                    status.emit(Status::with_ok("viewAccountFriendRequestsSentSuccess"));
+        api::put("accounts/friendrequests")
+            .body(&json!({
+                "platform": Platform::Native,
+                "userIdentifier": username
+            }))
+            .send(
+                self.props.app_callback.clone(),
+                move |r: ApiResponse<FriendRequestsSendResponseData>| match r {
+                    ApiResponse::Ok(_) => {
+                        status.emit(Status::with_ok("viewAccountFriendRequestsSentSuccess"));
+                    }
+                    ApiResponse::BadRequest(err) => {
+                        status.emit(Status::with_err(err));
+                    }
                 },
-                ApiResponse::BadRequest(err) => {
-                    status.emit(Status::with_err(err));
-                },
-            }
-        );
+            );
     }
 }

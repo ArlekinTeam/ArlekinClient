@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 use yew::prelude::*;
 
-use crate::{localization, api::ErrorDataElement};
+use crate::{api::ErrorDataElement, localization};
 
-pub struct Status {
-}
+pub struct Status {}
 
 impl Status {
     pub fn with_ok(translation_key: &str) -> Html {

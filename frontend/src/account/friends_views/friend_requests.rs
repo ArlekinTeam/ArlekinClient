@@ -1,34 +1,36 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use yew::prelude::*;
 
 use crate::{
-    localization, app, api::{self, ApiResponse}, account::{load_user::{LoadUser, User}}
+    account::load_user::{LoadUser, User},
+    api::{self, ApiResponse},
+    app, localization,
 };
 
 pub struct FriendRequests {
     props: Props,
     data: Option<FriendRequestsLoadResponseData>,
-    status: Html
+    status: Html,
 }
 
 #[derive(Properties, PartialEq, Clone)]
 pub struct Props {
-    pub app_callback: Callback<app::Msg>
+    pub app_callback: Callback<app::Msg>,
 }
 
 pub enum Msg {
     SetStatus(Html),
     Reload,
     Load(FriendRequestsLoadResponseData),
-    Reject(i64)
+    Reject(i64),
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FriendRequestsLoadResponseData {
     received: Vec<i64>,
-    sent: Vec<i64>
+    sent: Vec<i64>,
 }
 
 impl Component for FriendRequests {
@@ -39,7 +41,7 @@ impl Component for FriendRequests {
         let s = Self {
             props: ctx.props().clone(),
             data: None,
-            status: Default::default()
+            status: Default::default(),
         };
         s.load(ctx);
         s
@@ -115,7 +117,7 @@ impl Component for FriendRequests {
                 }
 
                 vec
-            },
+            }
             None => vec![html! { <p>{"Loading..."}</p> }],
         };
 
@@ -134,22 +136,21 @@ impl FriendRequests {
             move |r: ApiResponse<FriendRequestsLoadResponseData>| match r {
                 ApiResponse::Ok(r) => callback.emit(r),
                 ApiResponse::BadRequest(_) => todo!(),
-            }
+            },
         );
     }
 
     fn reject(&self, ctx: &Context<Self>, requested_friend_user_id: i64) {
         let callback = ctx.link().callback(|_: ()| Msg::Reload);
 
-        api::delete("accounts/friendrequests").body(&json!({
-            "requestedFriendUserId": requested_friend_user_id
-        })).send_without_ok(
-            self.props.app_callback.clone(),
-            move |r| match r {
+        api::delete("accounts/friendrequests")
+            .body(&json!({
+                "requestedFriendUserId": requested_friend_user_id
+            }))
+            .send_without_ok(self.props.app_callback.clone(), move |r| match r {
                 ApiResponse::Ok(_) => callback.emit(()),
-                ApiResponse::BadRequest(_) => todo!()
-            }
-        );
+                ApiResponse::BadRequest(_) => todo!(),
+            });
     }
 }
 

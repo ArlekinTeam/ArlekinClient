@@ -1,7 +1,10 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use yew::prelude::*;
 
-use crate::{app, api::{self, ApiResponse}};
+use crate::{
+    api::{self, ApiResponse},
+    app,
+};
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -9,25 +12,24 @@ pub struct User {
     pub user_id: i64,
     pub username: String,
     pub name: String,
-    pub avatar_url: String
+    pub avatar_url: String,
 }
-
 
 pub struct LoadUser {
     props: Props,
-    user: Option<User>
+    user: Option<User>,
 }
 
 pub enum Msg {
     Reload,
-    Load(User)
+    Load(User),
 }
 
 #[derive(Properties, Clone, PartialEq)]
 pub struct Props {
     pub app_callback: Callback<app::Msg>,
     pub user_id: i64,
-    pub view: Callback<Option<User>, Html>
+    pub view: Callback<Option<User>, Html>,
 }
 
 impl Component for LoadUser {
@@ -37,7 +39,7 @@ impl Component for LoadUser {
     fn create(ctx: &Context<Self>) -> Self {
         let s = Self {
             props: ctx.props().clone(),
-            user: None
+            user: None,
         };
         s.load(ctx);
         s
@@ -48,8 +50,8 @@ impl Component for LoadUser {
             Msg::Reload => {
                 self.load(ctx);
                 return false;
-            },
-            Msg::Load(user) => self.user = Some(user)
+            }
+            Msg::Load(user) => self.user = Some(user),
         };
         true
     }
@@ -63,12 +65,14 @@ impl LoadUser {
     fn load(&self, ctx: &Context<Self>) {
         let callback = ctx.link().callback(Msg::Load);
 
-        api::get("accounts/user").query([("id", self.props.user_id.to_string())]).send(
-            self.props.app_callback.clone(),
-            move |r: ApiResponse<User>| match r {
-                ApiResponse::Ok(r) => callback.emit(r),
-                ApiResponse::BadRequest(_) => todo!(),
-            }
-        );
+        api::get("accounts/user")
+            .query([("id", self.props.user_id.to_string())])
+            .send(
+                self.props.app_callback.clone(),
+                move |r: ApiResponse<User>| match r {
+                    ApiResponse::Ok(r) => callback.emit(r),
+                    ApiResponse::BadRequest(_) => todo!(),
+                },
+            );
     }
 }

@@ -1,6 +1,6 @@
-use std::{process::Command, path::Path, env, fs};
+use std::{env, fs, path::Path, process::Command};
 
-use fs_extra::{dir, copy_items};
+use fs_extra::{copy_items, dir};
 
 fn main() {
     println!("cargo:rerun-if-changed=../");

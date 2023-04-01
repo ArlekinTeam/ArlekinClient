@@ -1,9 +1,9 @@
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Language {
-    translations: HashMap<String, String>
+    translations: HashMap<String, String>,
 }
 
 impl Language {
