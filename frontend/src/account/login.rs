@@ -1,4 +1,4 @@
-use argon2::Argon2;
+use argon2::{Argon2, Algorithm, Version, Params};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
@@ -7,6 +7,7 @@ use yew::prelude::*;
 use crate::{
     api::{self, ApiResponse},
     app,
+    direct_messages_views::encryption,
     helpers::prelude::*,
     localization,
     route::{Route, Router},
@@ -111,8 +112,10 @@ impl Login {
                 app_callback.clone(),
                 move |r: ApiResponse<LoginResponseData>| match r {
                     ApiResponse::Ok(r) => {
-                        let mut message_encryption_hash = [0u8; 512];
-                        Argon2::default()
+                        let mut message_encryption_hash = [0u8; 128];
+                        Argon2::new(Algorithm::default(), Version::default(), Params::new(
+                            65536, 3, 3, None
+                        ).unwrap())
                             .hash_password_into(
                                 password.as_bytes(),
                                 format!(
@@ -128,6 +131,10 @@ impl Login {
                             )
                             .unwrap();
 
+                        wasm_bindgen_futures::spawn_local(async move {
+                            let a = message_encryption_hash;
+                            encryption::init(&a).await;
+                        });
                         app_callback.emit(app::Msg::Login);
                     }
                     ApiResponse::BadRequest(err) => {
