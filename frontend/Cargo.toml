@@ -26,6 +26,8 @@ serde_repr = "0.1.12"
 const_format = "0.2.30"
 js-sys = "0.3.61"
 md5 = "0.7.0"
+lru = "0.10.0"
+lazy_static = "1.4.0"
 
 [profile.dev.package.argon2]
 opt-level = 3
@@ -37,7 +39,4 @@ opt-level = 3
 opt-level = 3
 
 [profile.dev.package.password-hash]
-opt-level = 3
-
-[profile.dev.package.zeroize]
 opt-level = 3

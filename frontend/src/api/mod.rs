@@ -29,7 +29,7 @@ pub enum ApiResponse<T> {
     BadRequest(HashMap<String, ErrorDataElement>),
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ErrorDataElement {
     pub code: u32,
@@ -37,8 +37,8 @@ pub struct ErrorDataElement {
 }
 
 #[derive(Serialize, Deserialize)]
-struct ErrorData {
-    errors: HashMap<String, ErrorDataElement>,
+pub struct ErrorData {
+    pub errors: HashMap<String, ErrorDataElement>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
