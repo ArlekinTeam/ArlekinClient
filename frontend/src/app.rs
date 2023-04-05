@@ -3,17 +3,21 @@ use yew_router::prelude::*;
 
 use crate::{
     account::{friends_views::friends::Friends, login::Login},
+    channel_views::channel::Channel,
+    direct_messages_views::direct_messages::DirectMessages,
     localization,
     route::{self, Route},
 };
 
 pub struct App {
     logged_in: bool,
+    openned_channel: i64,
 }
 
 pub enum Msg {
     Login,
     Logout,
+    OpennedChannel(i64),
 }
 
 impl Component for App {
@@ -21,28 +25,34 @@ impl Component for App {
     type Properties = ();
 
     fn create(_: &Context<Self>) -> Self {
-        Self { logged_in: false }
+        Self {
+            logged_in: false,
+            openned_channel: 0,
+        }
     }
 
     fn update(&mut self, _: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::Login => {
-                self.logged_in = true;
-                true
-            }
-            Msg::Logout => {
-                self.logged_in = false;
-                true
-            }
-        }
+            Msg::Login => self.logged_in = true,
+            Msg::Logout => self.logged_in = false,
+            Msg::OpennedChannel(openned_channel) => self.openned_channel = openned_channel,
+        };
+        true
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let app_callback = ctx.link().callback(|m| m);
         if self.logged_in {
+            let content = if self.openned_channel == 0 {
+                html! { <Friends app_callback={app_callback.clone()} /> }
+            } else {
+                html! { <Channel app_callback={app_callback.clone()} channel_id={self.openned_channel} /> }
+            };
+
             html! {
                 <>
-                    <Friends app_callback={app_callback} />
+                    <DirectMessages app_callback={app_callback} />
+                    {content}
                 </>
             }
         } else {

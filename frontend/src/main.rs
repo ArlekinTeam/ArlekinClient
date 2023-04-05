@@ -1,9 +1,15 @@
 pub mod account;
 pub mod api;
 pub mod app;
+pub mod channel_views;
+pub mod common;
+pub mod direct_messages_views;
 pub mod helpers;
 pub mod localization;
 pub mod route;
+
+#[macro_use]
+extern crate lazy_static;
 
 fn main() {
     wasm_logger::init(wasm_logger::Config::default());

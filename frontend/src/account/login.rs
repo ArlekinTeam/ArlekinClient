@@ -1,4 +1,5 @@
-use argon2::Argon2;
+use argon2::{Algorithm, Argon2, Params, Version};
+use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
@@ -7,6 +8,7 @@ use yew::prelude::*;
 use crate::{
     api::{self, ApiResponse},
     app,
+    direct_messages_views::encryption,
     helpers::prelude::*,
     localization,
     route::{Route, Router},
@@ -97,7 +99,6 @@ impl Login {
                 &mut password_hash,
             )
             .unwrap();
-        let password_hash_string = password_hash.iter().map(|&x| x as char).collect::<String>();
 
         let app_callback = self.props.app_callback.clone();
         let status = ctx.link().callback(Msg::SetStatus);
@@ -105,29 +106,41 @@ impl Login {
         api::post("accounts/auth/login")
             .body(&json!({
                 "email": email,
-                "passwordHash": password_hash_string
+                "passwordHash": general_purpose::STANDARD.encode(password_hash)
             }))
             .send(
                 app_callback.clone(),
                 move |r: ApiResponse<LoginResponseData>| match r {
                     ApiResponse::Ok(r) => {
-                        let mut message_encryption_hash = [0u8; 512];
-                        Argon2::default()
-                            .hash_password_into(
-                                password.as_bytes(),
-                                format!(
-                                    "arlekin{}message",
-                                    r.message_encryption_salt
-                                        .to_le_bytes()
-                                        .iter()
-                                        .map(|&x| x as char)
-                                        .collect::<String>()
-                                )
-                                .as_bytes(),
-                                &mut message_encryption_hash,
+                        let mut message_encryption_hash = [0u8; 128];
+                        Argon2::new(
+                            Algorithm::default(),
+                            Version::default(),
+                            Params::new(65536, 3, 3, None).unwrap(),
+                        )
+                        .hash_password_into(
+                            password.as_bytes(),
+                            format!(
+                                "arlekin{}message",
+                                r.message_encryption_salt
+                                    .to_le_bytes()
+                                    .iter()
+                                    .map(|&x| x as char)
+                                    .collect::<String>()
                             )
-                            .unwrap();
+                            .as_bytes(),
+                            &mut message_encryption_hash,
+                        )
+                        .unwrap();
 
+                        let b = app_callback.clone();
+                        wasm_bindgen_futures::spawn_local(async move {
+                            let a = message_encryption_hash;
+                            encryption::init(b.clone(), &a).await;
+
+                            // TODO: remove this. Move to registration.
+                            encryption::put_new_encryption_block(b, 0).await;
+                        });
                         app_callback.emit(app::Msg::Login);
                     }
                     ApiResponse::BadRequest(err) => {
