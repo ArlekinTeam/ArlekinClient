@@ -134,7 +134,7 @@ impl Login {
                         let b = app_callback.clone();
                         wasm_bindgen_futures::spawn_local(async move {
                             let a = message_encryption_hash;
-                            encryption::init(&a).await;
+                            encryption::init(b.clone(), &a).await;
 
                             // TODO: remove this. Move to registration.
                             encryption::put_new_encryption_block(b, 0).await;
