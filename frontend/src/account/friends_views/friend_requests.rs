@@ -3,7 +3,7 @@ use serde_json::json;
 use yew::prelude::*;
 
 use crate::{
-    account::load_user::{LoadUser, User},
+    account::load_user::{LoadUser, LoadUserContext},
     api::{self, ApiResponse},
     app, localization,
 };
@@ -74,7 +74,8 @@ impl Component for FriendRequests {
                         let user_id = *e;
                         vec.push(html! {
                             <div class="friends-profile-container">
-                                <LoadUser
+                                <LoadUser<()>
+                                    props={()}
                                     app_callback={self.props.app_callback.clone()}
                                     user_id={user_id}
                                     view={Callback::from(process_user_view)}
@@ -99,7 +100,8 @@ impl Component for FriendRequests {
                         let user_id = *e;
                         vec.push(html! {
                             <div class="friends-profile-container">
-                                <LoadUser
+                                <LoadUser<()>
+                                    props={()}
                                     app_callback={self.props.app_callback.clone()}
                                     user_id={user_id}
                                     view={Callback::from(process_user_view)}
@@ -170,19 +172,19 @@ impl FriendRequests {
     }
 }
 
-fn process_user_view(user: Option<User>) -> Html {
-    if user.is_none() {
+fn process_user_view(ctx: LoadUserContext<()>) -> Html {
+    if ctx.user.is_none() {
         return html! { {"Loading..."} };
     }
-    let user = user.unwrap();
+    let user = ctx.user.unwrap();
 
     html! {
         <div class="friends-profile">
-            <img class="friends-avatar" src={user.avatar_url} alt={"avatar"} />
+            <img class="friends-avatar" src={user.avatar_url.clone()} alt={"avatar"} />
             <div class="select">
-                <label class="friends-name">{user.name}</label>
+                <label class="friends-name">{user.name.clone()}</label>
                 <br/>
-                <span class="friends-username">{"@"}{user.username}</span>
+                <span class="friends-username">{"@"}{user.username.clone()}</span>
             </div>
         </div>
     }

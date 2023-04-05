@@ -1,0 +1,17 @@
+.channel-message {
+    display: flex;
+    justify-content: left;
+    align-items: start;
+    margin-bottom: 1em;
+}
+
+.channel-message .message-avatar {
+    border-radius: 100%;
+    margin-right: 0.5em;
+    width: 3em;
+    height: 3em;
+}
+
+.channel-message .message-name {
+    font-weight: bold;
+}

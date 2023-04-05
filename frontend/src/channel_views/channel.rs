@@ -1,15 +1,15 @@
-use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+
 use yew::prelude::*;
 
 use crate::{
-    api::{self, ApiResponse},
     app, localization,
-    helpers::prelude::*, direct_messages_views::encryption
+    helpers::prelude::*, direct_messages_views::encryption, account::load_user::{LoadUser, LoadUserContext}, route::{self, Route}
 };
 
 pub struct Channel {
     props: Props,
-    data: Option<ChannelLoadResponseData>,
+    messages: Option<Vec<ChannelMessage>>,
 }
 
 #[derive(Properties, PartialEq, Clone)]
@@ -19,15 +19,15 @@ pub struct Props {
 }
 
 pub enum Msg {
-    Load(ChannelLoadResponseData),
+    Load(Vec<ChannelMessage>),
     Reload,
     Send
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ChannelLoadResponseData {
-    channel_ids: Vec<i64>,
+pub struct ChannelMessage {
+    pub message_id: i64,
+    pub author_user_id: i64,
+    pub text: Arc<String>
 }
 
 impl Component for Channel {
@@ -37,16 +37,16 @@ impl Component for Channel {
     fn create(ctx: &Context<Self>) -> Self {
         let s = Self {
             props: ctx.props().clone(),
-            data: None,
+            messages: None,
         };
-        //s.load(ctx);
+        s.load(ctx);
         s
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
             Msg::Reload => self.load(ctx),
-            Msg::Load(data) => self.data = Some(data),
+            Msg::Load(messages) => self.messages = Some(messages),
             Msg::Send => self.send(ctx)
         };
         true
@@ -55,7 +55,31 @@ impl Component for Channel {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let lang = localization::get_language();
 
+        let content = match &self.messages {
+            Some(messages) => {
+                let mut vec = Vec::with_capacity(messages.len());
+                for message in messages.iter().rev() {
+                    vec.push(html! {
+                        <LoadUser<Arc<String>>
+                            props={message.text.clone()}
+                            app_callback={self.props.app_callback.clone()}
+                            user_id={message.author_user_id}
+                            view={Callback::from(process_message_view)}
+                        />
+                    });
+                }
+
+                vec
+            },
+            None => vec![html! { <p>{"Loading..."}</p> }],
+        };
+
         html! { <>
+            <route::Router route={Route::Chat { id: self.props.channel_id }} />
+            <link rel="stylesheet" href="/static/css/channel_views/channel.css" />
+
+            {content}
+
             <input type="text" name="message" id="message" />
             <button onclick={ctx.link().callback(|_| Msg::Send)}>{lang.get("viewChannelSendMessage")}</button>
         </> }
@@ -64,15 +88,15 @@ impl Component for Channel {
 
 impl Channel {
     fn load(&self, ctx: &Context<Self>) {
+        let app_callback = self.props.app_callback.clone();
         let callback = ctx.link().callback(Msg::Load);
+        let channel_id = self.props.channel_id;
 
-        api::get("channels/direct").send(
-            self.props.app_callback.clone(),
-            move |r: ApiResponse<ChannelLoadResponseData>| match r {
-                ApiResponse::Ok(r) => callback.emit(r),
-                ApiResponse::BadRequest(_) => todo!(),
-            },
-        );
+        wasm_bindgen_futures::spawn_local(async move {
+            callback.emit(encryption::get_messages(
+                app_callback, channel_id, 0
+            ).await);
+        });
     }
 
     fn send(&self, _: &Context<Self>) {
@@ -80,5 +104,23 @@ impl Channel {
         encryption::send_message(
             self.props.app_callback.clone(), self.props.channel_id, message
         );
+    }
+}
+
+fn process_message_view(ctx: LoadUserContext<Arc<String>>) -> Html {
+    if ctx.user.is_none() {
+        return html! { {"Loading..."} };
+    }
+    let user = ctx.user.unwrap();
+
+    html! {
+        <div class="channel-message">
+            <img class="message-avatar noselect" src={user.avatar_url.clone()} alt={"avatar"} />
+            <div>
+                <label class="message-name">{user.name.clone()}</label>
+                <br/>
+                <label>{ctx.props}</label>
+            </div>
+        </div>
     }
 }

@@ -1,10 +1,20 @@
+use std::{sync::{Mutex, Arc}, num::NonZeroUsize};
+
+use lru::LruCache;
 use serde::{Deserialize, Serialize};
 use yew::prelude::*;
 
 use crate::{
-    api::{self, ApiResponse},
+    api,
     app,
 };
+
+lazy_static! {
+    static ref REQUESTING_LOCK: async_std::sync::Mutex<()> = async_std::sync::Mutex::new(());
+
+    static ref CACHED_USERS: Mutex<LruCache<i64, Arc<User>>> =
+        Mutex::new(LruCache::new(NonZeroUsize::new(2048).unwrap()));
+}
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -15,31 +25,37 @@ pub struct User {
     pub avatar_url: String,
 }
 
-pub struct LoadUser {
-    props: Props,
-    user: Option<User>,
+pub struct LoadUser<T> where T: Clone + PartialEq + 'static {
+    props: Props<T>,
+    user: Option<Arc<User>>
+}
+
+pub struct LoadUserContext<T> where T: Clone + PartialEq + 'static {
+    pub user: Option<Arc<User>>,
+    pub props: T
 }
 
 pub enum Msg {
     Reload,
-    Load(User),
+    Load(Arc<User>),
 }
 
 #[derive(Properties, Clone, PartialEq)]
-pub struct Props {
+pub struct Props<T> where T: Clone + PartialEq + 'static {
+    pub props: T,
     pub app_callback: Callback<app::Msg>,
     pub user_id: i64,
-    pub view: Callback<Option<User>, Html>,
+    pub view: Callback<LoadUserContext<T>, Html>,
 }
 
-impl Component for LoadUser {
+impl<T> Component for LoadUser<T> where T: Clone + PartialEq + 'static {
     type Message = Msg;
-    type Properties = Props;
+    type Properties = Props<T>;
 
     fn create(ctx: &Context<Self>) -> Self {
         let s = Self {
             props: ctx.props().clone(),
-            user: None,
+            user: None
         };
         s.load(ctx);
         s
@@ -57,22 +73,41 @@ impl Component for LoadUser {
     }
 
     fn view(&self, _: &Context<Self>) -> Html {
-        self.props.view.emit(self.user.clone())
+        self.props.view.emit(LoadUserContext {
+            user: self.user.clone(),
+            props: self.props.props.clone()
+        })
     }
 }
 
-impl LoadUser {
+impl<T> LoadUser<T> where T: Clone + PartialEq + 'static {
     fn load(&self, ctx: &Context<Self>) {
         let callback = ctx.link().callback(Msg::Load);
+        if let Some(user) = CACHED_USERS.lock().unwrap().get(&self.props.user_id) {
+            callback.emit(user.clone());
+            return;
+        }
 
-        api::get("accounts/user")
-            .query([("id", self.props.user_id.to_string())])
-            .send(
-                self.props.app_callback.clone(),
-                move |r: ApiResponse<User>| match r {
-                    ApiResponse::Ok(r) => callback.emit(r),
-                    ApiResponse::BadRequest(_) => todo!(),
+        let user_id = self.props.user_id;
+        wasm_bindgen_futures::spawn_local(async move {
+            let _lock = REQUESTING_LOCK.lock().await;
+            if let Some(user) = CACHED_USERS.lock().unwrap().get(&user_id) {
+                callback.emit(user.clone());
+                return;
+            }
+
+            let response = api::get("accounts/user")
+                .query([("id", user_id.to_string())])
+                .send_async().await;
+            match response.status() {
+                200 => {
+                    let user = Arc::new(response.json::<User>().await.unwrap());
+                    CACHED_USERS.lock().unwrap().put(user_id, user.clone());
+                    callback.emit(user);
                 },
-            );
+                400 => todo!(),
+                _ => unreachable!(),
+            }
+        });
     }
 }

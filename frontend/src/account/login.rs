@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
 use yew::prelude::*;
+use base64::{engine::general_purpose, Engine as _};
 
 use crate::{
     api::{self, ApiResponse},
@@ -98,7 +99,6 @@ impl Login {
                 &mut password_hash,
             )
             .unwrap();
-        let password_hash_string = password_hash.iter().map(|&x| x as char).collect::<String>();
 
         let app_callback = self.props.app_callback.clone();
         let status = ctx.link().callback(Msg::SetStatus);
@@ -106,7 +106,7 @@ impl Login {
         api::post("accounts/auth/login")
             .body(&json!({
                 "email": email,
-                "passwordHash": password_hash_string
+                "passwordHash": general_purpose::STANDARD.encode(password_hash)
             }))
             .send(
                 app_callback.clone(),

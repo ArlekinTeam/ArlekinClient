@@ -12,7 +12,10 @@ use web_sys::{CryptoKeyPair, CryptoKey};
 use yew::Callback;
 use base64::{engine::general_purpose, Engine as _};
 
-use crate::{helpers::prelude::WebPage, api::{self, ApiResponse, Platform, ErrorData, ErrorDataElement}, app, common::UnsafeSync};
+use crate::{
+    helpers::prelude::WebPage, api::{self, ApiResponse, Platform, ErrorData, ErrorDataElement}, app,
+    common::UnsafeSync, channel_views::channel::ChannelMessage
+};
 
 const RSA_BITS: usize = 4096;
 const AES_BITS: usize = 256;
@@ -103,6 +106,23 @@ struct MessagesPutResponseData {
 struct GetMiddleKeysResponseData {
     keys: String,
     encrypted_keys: String
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MessagesGetElementResultData {
+    direct_message_id: i64,
+    author_user_id: i64,
+    encryption_key_id: i64,
+    nonce: String,
+    encrypted_text: String,
+    edited: bool
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct MessagesGetResultData {
+    messages: Vec<MessagesGetElementResultData>
 }
 
 pub async fn init(app_callback: Callback<app::Msg>, encryption_block_hash: &[u8]) {
@@ -203,6 +223,40 @@ pub async fn put_new_encryption_key(app_callback: Callback<app::Msg>, direct_cha
         },
         _ => unreachable!(),
     };
+}
+
+pub async fn get_messages(
+    app_callback: Callback<app::Msg>, direct_channel_id: i64, before_direct_message_id: i64
+) -> Vec<ChannelMessage> {
+    let response = api::get("channels/direct/messages").query([
+        ("directChannelId", direct_channel_id.to_string()),
+        ("beforeDirectMessageId", before_direct_message_id.to_string())
+    ]).send_async().await;
+    let messages = match response.status() {
+        200 => response.json::<MessagesGetResultData>().await.unwrap(),
+        400 => todo!(),
+        _ => unreachable!(),
+    }.messages;
+
+    let mut result = Vec::with_capacity(messages.len());
+    for message in messages {
+        let key = get_encryption_key(
+            app_callback.clone(), direct_channel_id, message.encryption_key_id
+        ).await;
+
+        let nonce = general_purpose::STANDARD.decode(message.nonce).unwrap();
+        let mut text = general_purpose::STANDARD.decode(message.encrypted_text).unwrap();
+
+        decrypt_aes(&key.key, &nonce, &mut text).await;
+
+        result.push(ChannelMessage {
+            message_id: message.direct_message_id,
+            author_user_id: message.author_user_id,
+            text: Arc::new(String::from_utf8(text).unwrap()),
+        });
+    }
+
+    result
 }
 
 pub fn send_message(app_callback: Callback<app::Msg>, direct_channel_id: i64, content: String) {
