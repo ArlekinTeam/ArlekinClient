@@ -3,8 +3,12 @@ use std::sync::Arc;
 use yew::prelude::*;
 
 use crate::{
-    app, localization,
-    helpers::prelude::*, direct_messages_views::encryption, account::load_user::{LoadUser, LoadUserContext}, route::{self, Route}
+    account::load_user::{LoadUser, LoadUserContext},
+    app,
+    direct_messages_views::encryption,
+    helpers::prelude::*,
+    localization,
+    route::{self, Route},
 };
 
 pub struct Channel {
@@ -15,19 +19,19 @@ pub struct Channel {
 #[derive(Properties, PartialEq, Clone)]
 pub struct Props {
     pub app_callback: Callback<app::Msg>,
-    pub channel_id: i64
+    pub channel_id: i64,
 }
 
 pub enum Msg {
     Load(Vec<ChannelMessage>),
     Reload,
-    Send
+    Send,
 }
 
 pub struct ChannelMessage {
     pub message_id: i64,
     pub author_user_id: i64,
-    pub text: Arc<String>
+    pub text: Arc<String>,
 }
 
 impl Component for Channel {
@@ -47,7 +51,7 @@ impl Component for Channel {
         match msg {
             Msg::Reload => self.load(ctx),
             Msg::Load(messages) => self.messages = Some(messages),
-            Msg::Send => self.send(ctx)
+            Msg::Send => self.send(ctx),
         };
         true
     }
@@ -70,7 +74,7 @@ impl Component for Channel {
                 }
 
                 vec
-            },
+            }
             None => vec![html! { <p>{"Loading..."}</p> }],
         };
 
@@ -93,16 +97,16 @@ impl Channel {
         let channel_id = self.props.channel_id;
 
         wasm_bindgen_futures::spawn_local(async move {
-            callback.emit(encryption::get_messages(
-                app_callback, channel_id, 0
-            ).await);
+            callback.emit(encryption::get_messages(app_callback, channel_id, 0).await);
         });
     }
 
     fn send(&self, _: &Context<Self>) {
         let message = Input::by_id("message").value();
         encryption::send_message(
-            self.props.app_callback.clone(), self.props.channel_id, message
+            self.props.app_callback.clone(),
+            self.props.channel_id,
+            message,
         );
     }
 }

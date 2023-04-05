@@ -1,20 +1,26 @@
 use core::panic;
-use std::{sync::{Arc, Mutex}, num::NonZeroUsize};
+use std::{
+    num::NonZeroUsize,
+    sync::{Arc, Mutex},
+};
 
 use arc_cell::ArcCell;
+use base64::{engine::general_purpose, Engine as _};
 use js_sys::Reflect;
 use lru::LruCache;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{CryptoKeyPair, CryptoKey};
+use web_sys::{CryptoKey, CryptoKeyPair};
 use yew::Callback;
-use base64::{engine::general_purpose, Engine as _};
 
 use crate::{
-    helpers::prelude::WebPage, api::{self, ApiResponse, Platform, ErrorData, ErrorDataElement}, app,
-    common::UnsafeSync, channel_views::channel::ChannelMessage
+    api::{self, ApiResponse, ErrorData, ErrorDataElement, Platform},
+    app,
+    channel_views::channel::ChannelMessage,
+    common::UnsafeSync,
+    helpers::prelude::WebPage,
 };
 
 const RSA_BITS: usize = 4096;
@@ -23,11 +29,10 @@ const AES_BLOCK_BITS: usize = 64;
 const PRIVATE_KEY_BLOCKS: usize = 8;
 
 lazy_static! {
-    static ref ENCRYPTION_BLOCK_DATA: ArcCell<Option<UnsafeSync<PrivateKeyEncryptionData>>> = ArcCell::default();
-
+    static ref ENCRYPTION_BLOCK_DATA: ArcCell<Option<UnsafeSync<PrivateKeyEncryptionData>>> =
+        ArcCell::default();
     static ref USED_ENCRYPTION_KEYS: Mutex<LruCache<i64, i64>> =
         Mutex::new(LruCache::new(NonZeroUsize::new(512).unwrap()));
-
     static ref CACHED_ENCRYPTION_BLOCKS_PRIVATE: Mutex<LruCache<i64, UnsafeSync<Arc<CryptoKey>>>> =
         Mutex::new(LruCache::new(NonZeroUsize::new(100).unwrap()));
     static ref CACHED_ENCRYPTION_KEYS: Mutex<LruCache<i64, Arc<EncryptionKey>>> =
@@ -35,14 +40,14 @@ lazy_static! {
 }
 
 struct PrivateKeyEncryptionData {
-    keys: [CryptoKey; PRIVATE_KEY_BLOCKS]
+    keys: [CryptoKey; PRIVATE_KEY_BLOCKS],
 }
 
 struct EncryptionKey {
     encryption_key_id: i64,
     #[allow(dead_code)]
     encryption_block_id: i64,
-    key: UnsafeSync<CryptoKey>
+    key: UnsafeSync<CryptoKey>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -56,34 +61,34 @@ struct PutEncryptionBlockResponseData {
 struct EncryptionPublicKeyElementResponseData {
     platform: Platform,
     encryption_block_id: i64,
-    public_key: String
+    public_key: String,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct EncryptionPublicKeyResponseData {
-    public_keys: Vec<EncryptionPublicKeyElementResponseData>
+    public_keys: Vec<EncryptionPublicKeyElementResponseData>,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct EncryptionPrivateKeyResponseData {
     nonce: String,
-    encrypted_private_key: String
+    encrypted_private_key: String,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct EncryptionKeysPutDataElement {
     encryption_block_id: i64,
-    encrypted_key: String
+    encrypted_key: String,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct EncryptionKeysPutResponseData {
     encryption_block_id: i64,
-    encryption_key_id: i64
+    encryption_key_id: i64,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -91,21 +96,21 @@ struct EncryptionKeysPutResponseData {
 struct EncryptionKeysGetEncryptedKeyResponseData {
     encryption_block_id: i64,
     encryption_key_id: i64,
-    encrypted_key: String
+    encrypted_key: String,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct MessagesPutResponseData {
     direct_message_id: i64,
-    send_new_encryption_key: bool
+    send_new_encryption_key: bool,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct GetMiddleKeysResponseData {
     keys: String,
-    encrypted_keys: String
+    encrypted_keys: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -116,44 +121,44 @@ struct MessagesGetElementResultData {
     encryption_key_id: i64,
     nonce: String,
     encrypted_text: String,
-    edited: bool
+    edited: bool,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct MessagesGetResultData {
-    messages: Vec<MessagesGetElementResultData>
+    messages: Vec<MessagesGetElementResultData>,
 }
 
 pub async fn init(app_callback: Callback<app::Msg>, encryption_block_hash: &[u8]) {
-    let response = api::post("channels/direct/encryption/getmiddlekeys").send_async().await;
+    let response = api::post("channels/direct/encryption/getmiddlekeys")
+        .send_async()
+        .await;
     let data = match response.status() {
         200 => response.json::<GetMiddleKeysResponseData>().await.unwrap(),
         400 => {
             let errors = response.json::<ErrorData>().await.unwrap().errors;
-            if // DirectChannelEncryptionMiddleKeysNotFound
-                errors.len() == 1 &&
-                errors.get("").unwrap_or(&ErrorDataElement::default()).code == 3004
+            if
+            // DirectChannelEncryptionMiddleKeysNotFound
+            errors.len() == 1
+                && errors.get("").unwrap_or(&ErrorDataElement::default()).code == 3004
             {
                 put_middle_keys(app_callback, encryption_block_hash).await
             } else {
                 todo!();
             }
-        },
+        }
         _ => unreachable!(),
     };
 
     let keys_buffer = general_purpose::STANDARD.decode(data.keys).unwrap();
-    let mut keys = keys_buffer.chunks(
-        keys_buffer.len() / PRIVATE_KEY_BLOCKS
-    );
-    let encrypted_keys_buffer = general_purpose::STANDARD.decode(data.encrypted_keys).unwrap();
-    let mut encrypted_keys = encrypted_keys_buffer.chunks(
-        encrypted_keys_buffer.len() / PRIVATE_KEY_BLOCKS
-    );
-    let chunks = encryption_block_hash.chunks(
-        encryption_block_hash.len() / PRIVATE_KEY_BLOCKS
-    );
+    let mut keys = keys_buffer.chunks(keys_buffer.len() / PRIVATE_KEY_BLOCKS);
+    let encrypted_keys_buffer = general_purpose::STANDARD
+        .decode(data.encrypted_keys)
+        .unwrap();
+    let mut encrypted_keys =
+        encrypted_keys_buffer.chunks(encrypted_keys_buffer.len() / PRIVATE_KEY_BLOCKS);
+    let chunks = encryption_block_hash.chunks(encryption_block_hash.len() / PRIVATE_KEY_BLOCKS);
 
     let mut vec = Vec::new();
     for chunk in chunks {
@@ -165,7 +170,7 @@ pub async fn init(app_callback: Callback<app::Msg>, encryption_block_hash: &[u8]
     }
 
     ENCRYPTION_BLOCK_DATA.set(Arc::new(Some(UnsafeSync(PrivateKeyEncryptionData {
-        keys: vec.try_into().unwrap()
+        keys: vec.try_into().unwrap(),
     }))));
 }
 
@@ -175,32 +180,42 @@ pub async fn put_new_encryption_block(_app_callback: Callback<app::Msg>, direct_
     let public_key = export_key(&public_key, "spki").await;
 
     let response = api::put("channels/direct/encryption")
-    .body(&json!({
-        "directChannelId": direct_channel_id,
-        "publicKey":  general_purpose::STANDARD.encode(public_key),
-        "nonce": general_purpose::STANDARD.encode(nonce),
-        "encryptedPrivateKey": general_purpose::STANDARD.encode(encrypted_private_key)
-    })).send_async().await;
+        .body(&json!({
+            "directChannelId": direct_channel_id,
+            "publicKey":  general_purpose::STANDARD.encode(public_key),
+            "nonce": general_purpose::STANDARD.encode(nonce),
+            "encryptedPrivateKey": general_purpose::STANDARD.encode(encrypted_private_key)
+        }))
+        .send_async()
+        .await;
     match response.status() {
         200 => {
-            let r =
-                response.json::<PutEncryptionBlockResponseData>().await.unwrap();
+            let r = response
+                .json::<PutEncryptionBlockResponseData>()
+                .await
+                .unwrap();
 
-            CACHED_ENCRYPTION_BLOCKS_PRIVATE.lock().unwrap().put(
-                r.encryption_block_id, Arc::new(private_key).into()
-            );
-        },
+            CACHED_ENCRYPTION_BLOCKS_PRIVATE
+                .lock()
+                .unwrap()
+                .put(r.encryption_block_id, Arc::new(private_key).into());
+        }
         400 => {
             let errors = response.json::<ErrorData>().await.unwrap().errors;
-            if // ToFast
-                errors.len() == 1 &&
-                errors.get("directChannelId").unwrap_or(&ErrorDataElement::default()).code == 4002
+            if
+            // ToFast
+            errors.len() == 1
+                && errors
+                    .get("directChannelId")
+                    .unwrap_or(&ErrorDataElement::default())
+                    .code
+                    == 4002
             {
                 return;
             }
 
             todo!();
-        },
+        }
         _ => unreachable!(),
     };
 }
@@ -209,43 +224,59 @@ pub async fn put_new_encryption_key(app_callback: Callback<app::Msg>, direct_cha
     put_new_encryption_block(app_callback.clone(), direct_channel_id).await;
 
     let response = api::post("channels/direct/encryption/getpublickeys")
-    .body(&json!({
-        "directChannelId": direct_channel_id
-    })).send_async().await;
+        .body(&json!({ "directChannelId": direct_channel_id }))
+        .send_async()
+        .await;
     match response.status() {
         200 => {
-            let r =
-                response.json::<EncryptionPublicKeyResponseData>().await.unwrap();
+            let r = response
+                .json::<EncryptionPublicKeyResponseData>()
+                .await
+                .unwrap();
             put_new_encryption_key_worker(app_callback, direct_channel_id, r.public_keys).await;
-        },
+        }
         400 => {
             todo!();
-        },
+        }
         _ => unreachable!(),
     };
 }
 
 pub async fn get_messages(
-    app_callback: Callback<app::Msg>, direct_channel_id: i64, before_direct_message_id: i64
+    app_callback: Callback<app::Msg>,
+    direct_channel_id: i64,
+    before_direct_message_id: i64,
 ) -> Vec<ChannelMessage> {
-    let response = api::get("channels/direct/messages").query([
-        ("directChannelId", direct_channel_id.to_string()),
-        ("beforeDirectMessageId", before_direct_message_id.to_string())
-    ]).send_async().await;
+    let response = api::get("channels/direct/messages")
+        .query([
+            ("directChannelId", direct_channel_id.to_string()),
+            (
+                "beforeDirectMessageId",
+                before_direct_message_id.to_string(),
+            ),
+        ])
+        .send_async()
+        .await;
     let messages = match response.status() {
         200 => response.json::<MessagesGetResultData>().await.unwrap(),
         400 => todo!(),
         _ => unreachable!(),
-    }.messages;
+    }
+    .messages;
 
     let mut result = Vec::with_capacity(messages.len());
     for message in messages {
         let key = get_encryption_key(
-            app_callback.clone(), direct_channel_id, message.encryption_key_id
-        ).await;
+            app_callback.clone(),
+            direct_channel_id,
+            message.encryption_key_id,
+        )
+        .await;
 
         let nonce = general_purpose::STANDARD.decode(message.nonce).unwrap();
-        let mut text = general_purpose::STANDARD.decode(message.encrypted_text).unwrap();
+        let mut text = general_purpose::STANDARD
+            .decode(message.encrypted_text)
+            .unwrap();
 
         decrypt_aes(&key.key, &nonce, &mut text).await;
 
@@ -265,29 +296,34 @@ pub fn send_message(app_callback: Callback<app::Msg>, direct_channel_id: i64, co
         let key = get_encryption_key(app_callback.clone(), direct_channel_id, 0).await;
 
         let mut nonce: [u8; 16] = Default::default();
-        WebPage::crypto().get_random_values_with_u8_array(&mut nonce).unwrap();
+        WebPage::crypto()
+            .get_random_values_with_u8_array(&mut nonce)
+            .unwrap();
 
         let mut buffer = content.as_bytes().to_vec();
         encrypt_aes(&key.key, &nonce, &mut buffer).await;
 
         api::put("channels/direct/messages")
-        .body(&json!({
-            "directChannelId": direct_channel_id,
-            "encryptionKeyId": key.encryption_key_id,
-            "nonce": general_purpose::STANDARD.encode(nonce),
-            "encryptedText": general_purpose::STANDARD.encode(buffer)
-        }))
-        .send(
-            app_callback,
-            move |r: ApiResponse<MessagesPutResponseData>| match r {
-                ApiResponse::Ok(_) => (),
-                ApiResponse::BadRequest(_) => todo!(),
-            }
-        );
+            .body(&json!({
+                "directChannelId": direct_channel_id,
+                "encryptionKeyId": key.encryption_key_id,
+                "nonce": general_purpose::STANDARD.encode(nonce),
+                "encryptedText": general_purpose::STANDARD.encode(buffer)
+            }))
+            .send(
+                app_callback,
+                move |r: ApiResponse<MessagesPutResponseData>| match r {
+                    ApiResponse::Ok(_) => (),
+                    ApiResponse::BadRequest(_) => todo!(),
+                },
+            );
     });
 }
 
-async fn put_middle_keys(_app_callback: Callback<app::Msg>, encryption_block_hash: &[u8]) -> GetMiddleKeysResponseData {
+async fn put_middle_keys(
+    _app_callback: Callback<app::Msg>,
+    encryption_block_hash: &[u8],
+) -> GetMiddleKeysResponseData {
     let mut keys = Vec::new();
     let mut encrypted_keys = Vec::new();
 
@@ -306,7 +342,9 @@ async fn put_middle_keys(_app_callback: Callback<app::Msg>, encryption_block_has
     };
 
     let response = api::put("channels/direct/encryption/putmiddlekeys")
-        .body(&data).send_async().await;
+        .body(&data)
+        .send_async()
+        .await;
     match response.status() {
         200 => data,
         400 => todo!(),
@@ -315,59 +353,89 @@ async fn put_middle_keys(_app_callback: Callback<app::Msg>, encryption_block_has
 }
 
 async fn get_encryption_key(
-    app_callback: Callback<app::Msg>, direct_channel_id: i64, encryption_key_id: i64
+    app_callback: Callback<app::Msg>,
+    direct_channel_id: i64,
+    encryption_key_id: i64,
 ) -> Arc<EncryptionKey> {
     loop {
-        if let Some(key) = CACHED_ENCRYPTION_KEYS.lock().unwrap().get(&encryption_key_id) {
+        if let Some(key) = CACHED_ENCRYPTION_KEYS
+            .lock()
+            .unwrap()
+            .get(&encryption_key_id)
+        {
             return key.clone();
         }
 
         let response = api::post("channels/direct/encryption/keys/getencryptedkey")
-        .body(&json!({
-            "directChannelId": direct_channel_id,
-            "encryptionKeyId": encryption_key_id
-        })).send_async().await;
+            .body(&json!({
+                "directChannelId": direct_channel_id,
+                "encryptionKeyId": encryption_key_id
+            }))
+            .send_async()
+            .await;
         match response.status() {
             200 => {
-                let r =
-                    response.json::<EncryptionKeysGetEncryptedKeyResponseData>().await.unwrap();
+                let r = response
+                    .json::<EncryptionKeysGetEncryptedKeyResponseData>()
+                    .await
+                    .unwrap();
 
                 let private_key = get_private_key(
-                    app_callback.clone(), direct_channel_id, r.encryption_block_id
-                ).await;
+                    app_callback.clone(),
+                    direct_channel_id,
+                    r.encryption_block_id,
+                )
+                .await;
                 let mut buffer = general_purpose::STANDARD.decode(r.encrypted_key).unwrap();
                 buffer = decrypt_rsa(&private_key, &mut buffer).await;
                 let key = import_aes(&buffer).await;
 
-                CACHED_ENCRYPTION_KEYS.lock().unwrap().put(encryption_key_id, Arc::new(EncryptionKey {
-                    encryption_key_id: r.encryption_key_id,
-                    encryption_block_id: r.encryption_block_id,
-                    key: key.into(),
-                }));
-                USED_ENCRYPTION_KEYS.lock().unwrap().put(direct_channel_id, encryption_key_id);
-            },
+                CACHED_ENCRYPTION_KEYS.lock().unwrap().put(
+                    encryption_key_id,
+                    Arc::new(EncryptionKey {
+                        encryption_key_id: r.encryption_key_id,
+                        encryption_block_id: r.encryption_block_id,
+                        key: key.into(),
+                    }),
+                );
+                USED_ENCRYPTION_KEYS
+                    .lock()
+                    .unwrap()
+                    .put(direct_channel_id, encryption_key_id);
+            }
             400 => {
                 let errors = response.json::<ErrorData>().await.unwrap().errors;
-                if // DirectChannelEncryptionKeyNotFound
-                    errors.len() == 1 &&
-                    errors.get("encryptionKeyId").unwrap_or(&ErrorDataElement::default()).code == 3003
+                if
+                // DirectChannelEncryptionKeyNotFound
+                errors.len() == 1
+                    && errors
+                        .get("encryptionKeyId")
+                        .unwrap_or(&ErrorDataElement::default())
+                        .code
+                        == 3003
                 {
                     put_new_encryption_key(app_callback.clone(), direct_channel_id).await;
                     continue;
                 }
 
                 todo!();
-            },
+            }
             _ => unreachable!(),
         };
     }
 }
 
 async fn get_private_key(
-    _app_callback: Callback<app::Msg>, direct_channel_id: i64, encryption_block_id: i64
+    _app_callback: Callback<app::Msg>,
+    direct_channel_id: i64,
+    encryption_block_id: i64,
 ) -> Arc<CryptoKey> {
     loop {
-        if let Some(key) = CACHED_ENCRYPTION_BLOCKS_PRIVATE.lock().unwrap().get(&encryption_block_id) {
+        if let Some(key) = CACHED_ENCRYPTION_BLOCKS_PRIVATE
+            .lock()
+            .unwrap()
+            .get(&encryption_block_id)
+        {
             return key.0.clone();
         }
 
@@ -375,23 +443,31 @@ async fn get_private_key(
             .body(&json!({
                 "directChannelId": direct_channel_id,
                 "encryptionBlockId": encryption_block_id
-            })).send_async().await;
+            }))
+            .send_async()
+            .await;
         match response.status() {
             200 => {
-                let r =
-                    response.json::<EncryptionPrivateKeyResponseData>().await.unwrap();
+                let r = response
+                    .json::<EncryptionPrivateKeyResponseData>()
+                    .await
+                    .unwrap();
 
                 get_private_key_worker(encryption_block_id, r.nonce, r.encrypted_private_key).await;
-            },
+            }
             400 => {
                 todo!();
-            },
+            }
             _ => unreachable!(),
         };
     }
 }
 
-async fn get_private_key_worker(encryption_block_id: i64, nonce: String, encrypted_private_key: String) {
+async fn get_private_key_worker(
+    encryption_block_id: i64,
+    nonce: String,
+    encrypted_private_key: String,
+) {
     let encryption_block = ENCRYPTION_BLOCK_DATA.get();
     let encryption = match encryption_block.as_ref() {
         Some(e) => e,
@@ -399,10 +475,12 @@ async fn get_private_key_worker(encryption_block_id: i64, nonce: String, encrypt
     };
 
     let raw_nonce = general_purpose::STANDARD.decode(nonce).unwrap();
-    let mut buffer = general_purpose::STANDARD.decode(encrypted_private_key).unwrap();
+    let mut buffer = general_purpose::STANDARD
+        .decode(encrypted_private_key)
+        .unwrap();
     let mut parts: [Vec<u8>; PRIVATE_KEY_BLOCKS] = Default::default();
 
-    let mut length_buffer: [u8;  4] = Default::default();
+    let mut length_buffer: [u8; 4] = Default::default();
     length_buffer.copy_from_slice(&buffer[0..4]);
     let length = u32::from_le_bytes(length_buffer) as usize;
 
@@ -421,14 +499,16 @@ async fn get_private_key_worker(encryption_block_id: i64, nonce: String, encrypt
     }
 
     let private_key = import_rsa(&buffer[0..length], "pkcs8", "decrypt").await;
-    CACHED_ENCRYPTION_BLOCKS_PRIVATE.lock().unwrap().put(
-        encryption_block_id, Arc::new(private_key).into()
-    );
-
+    CACHED_ENCRYPTION_BLOCKS_PRIVATE
+        .lock()
+        .unwrap()
+        .put(encryption_block_id, Arc::new(private_key).into());
 }
 
 async fn put_new_encryption_key_worker(
-    _app_callback: Callback<app::Msg>, direct_channel_id: i64, public_keys: Vec<EncryptionPublicKeyElementResponseData>
+    _app_callback: Callback<app::Msg>,
+    direct_channel_id: i64,
+    public_keys: Vec<EncryptionPublicKeyElementResponseData>,
 ) {
     let key = generate_aes().await;
     let mut key_raw = export_key(&key, "raw").await;
@@ -436,9 +516,13 @@ async fn put_new_encryption_key_worker(
 
     for element in public_keys {
         let imported = import_rsa(
-            &general_purpose::STANDARD.decode(&element.public_key).unwrap(),
-            "spki", "encrypt"
-        ).await;
+            &general_purpose::STANDARD
+                .decode(&element.public_key)
+                .unwrap(),
+            "spki",
+            "encrypt",
+        )
+        .await;
         let buffer = encrypt_rsa(&imported, &mut key_raw).await;
 
         elements.push(EncryptionKeysPutDataElement {
@@ -448,31 +532,43 @@ async fn put_new_encryption_key_worker(
     }
 
     let response = api::put("channels/direct/encryption/keys")
-    .body(&json!({
-        "directChannelId": direct_channel_id,
-        "keyData": elements
-    })).send_async().await;
+        .body(&json!({
+            "directChannelId": direct_channel_id,
+            "keyData": elements
+        }))
+        .send_async()
+        .await;
     match response.status() {
         200 => {
-            let r =
-                response.json::<EncryptionKeysPutResponseData>().await.unwrap();
+            let r = response
+                .json::<EncryptionKeysPutResponseData>()
+                .await
+                .unwrap();
 
-            CACHED_ENCRYPTION_KEYS.lock().unwrap().put(r.encryption_key_id, Arc::new(EncryptionKey {
-                encryption_key_id: r.encryption_block_id,
-                encryption_block_id: r.encryption_key_id,
-                key: UnsafeSync(key),
-            }));
-            USED_ENCRYPTION_KEYS.lock().unwrap().put(direct_channel_id, r.encryption_key_id);
-        },
+            CACHED_ENCRYPTION_KEYS.lock().unwrap().put(
+                r.encryption_key_id,
+                Arc::new(EncryptionKey {
+                    encryption_key_id: r.encryption_block_id,
+                    encryption_block_id: r.encryption_key_id,
+                    key: UnsafeSync(key),
+                }),
+            );
+            USED_ENCRYPTION_KEYS
+                .lock()
+                .unwrap()
+                .put(direct_channel_id, r.encryption_key_id);
+        }
         400 => {
             todo!();
-        },
+        }
         _ => unreachable!(),
     };
 }
 
 async fn export_key(key: &CryptoKey, format: &str) -> Vec<u8> {
-    let promise = WebPage::crypto().subtle().export_key(format, key)
+    let promise = WebPage::crypto()
+        .subtle()
+        .export_key(format, key)
         .expect("Unable to export key.");
 
     let array_buffer: js_sys::ArrayBuffer = JsFuture::from(promise).await.unwrap().into();
@@ -494,17 +590,18 @@ async fn generate_rsa() -> (CryptoKey, CryptoKey) {
     key_usages.set(0, "encrypt".into());
     key_usages.set(1, "decrypt".into());
 
-    let key_promise = WebPage::crypto().subtle()
+    let key_promise = WebPage::crypto()
+        .subtle()
         .generate_key_with_object(&algorithm, true, &key_usages)
         .expect("Unable to generate RSA keys.");
     let key_pair: CryptoKeyPair = JsFuture::from(key_promise).await.unwrap().into();
 
-    let public_key: CryptoKey = Reflect::get(
-        &key_pair, &JsValue::from("publicKey")
-    ).expect("Unable to get public key.").into();
-    let private_key: CryptoKey = Reflect::get(
-        &key_pair, &JsValue::from("privateKey")
-    ).expect("Unable to get private key.").into();
+    let public_key: CryptoKey = Reflect::get(&key_pair, &JsValue::from("publicKey"))
+        .expect("Unable to get public key.")
+        .into();
+    let private_key: CryptoKey = Reflect::get(&key_pair, &JsValue::from("privateKey"))
+        .expect("Unable to get private key.")
+        .into();
 
     (public_key, private_key)
 }
@@ -525,14 +622,16 @@ async fn import_rsa(raw_key: &[u8], format: &str, usage: &str) -> CryptoKey {
     let key_data = js_sys::Uint8Array::new_with_length(raw_key.len() as u32);
     key_data.copy_from(raw_key);
 
-    let key_promise = WebPage::crypto().subtle().import_key_with_object(
-        format, &key_data, &algorithm, true, &key_usages
-    ).unwrap();
+    let key_promise = WebPage::crypto()
+        .subtle()
+        .import_key_with_object(format, &key_data, &algorithm, true, &key_usages)
+        .unwrap();
     JsFuture::from(key_promise).await.unwrap().into()
 }
 
 async fn encrypt_rsa(key: &CryptoKey, data: &mut [u8]) -> Vec<u8> {
-    let promise = WebPage::crypto().subtle()
+    let promise = WebPage::crypto()
+        .subtle()
         .encrypt_with_str_and_u8_array("RSA-OAEP", key, data)
         .expect("Unable to encrypt RSA data.");
 
@@ -542,7 +641,8 @@ async fn encrypt_rsa(key: &CryptoKey, data: &mut [u8]) -> Vec<u8> {
 }
 
 async fn decrypt_rsa(key: &CryptoKey, data: &mut [u8]) -> Vec<u8> {
-    let promise = WebPage::crypto().subtle()
+    let promise = WebPage::crypto()
+        .subtle()
         .decrypt_with_str_and_u8_array("RSA-OAEP", key, data)
         .expect("Unable to decrypt RSA data.");
 
@@ -560,7 +660,8 @@ async fn generate_aes() -> CryptoKey {
     key_usages.set(0, "encrypt".into());
     key_usages.set(1, "decrypt".into());
 
-    let key_promise = WebPage::crypto().subtle()
+    let key_promise = WebPage::crypto()
+        .subtle()
         .generate_key_with_object(&algorithm, true, &key_usages)
         .expect("Unable to generate AES key.");
     JsFuture::from(key_promise).await.unwrap().into()
@@ -578,15 +679,17 @@ async fn import_aes(raw_key: &[u8]) -> CryptoKey {
     let key_data = js_sys::Uint8Array::new_with_length(raw_key.len() as u32);
     key_data.copy_from(raw_key);
 
-    let key_promise = WebPage::crypto().subtle().import_key_with_object(
-        "raw", &key_data, &algorithm, true, &key_usages
-    ).unwrap();
+    let key_promise = WebPage::crypto()
+        .subtle()
+        .import_key_with_object("raw", &key_data, &algorithm, true, &key_usages)
+        .unwrap();
     JsFuture::from(key_promise).await.unwrap().into()
 }
 
 async fn encrypt_aes(key: &CryptoKey, nonce: &[u8], data: &mut [u8]) {
     let algorithm = encryption_aes_algorithm(nonce);
-    let promise = WebPage::crypto().subtle()
+    let promise = WebPage::crypto()
+        .subtle()
         .encrypt_with_object_and_u8_array(&algorithm, key, data)
         .expect("Unable to encrypt AES data.");
 
@@ -597,7 +700,8 @@ async fn encrypt_aes(key: &CryptoKey, nonce: &[u8], data: &mut [u8]) {
 
 async fn decrypt_aes(key: &CryptoKey, nonce: &[u8], data: &mut [u8]) {
     let algorithm = encryption_aes_algorithm(nonce);
-    let promise = WebPage::crypto().subtle()
+    let promise = WebPage::crypto()
+        .subtle()
         .decrypt_with_object_and_u8_array(&algorithm, key, data)
         .expect("Unable to decrypt AES data.");
 
@@ -606,7 +710,9 @@ async fn decrypt_aes(key: &CryptoKey, nonce: &[u8], data: &mut [u8]) {
     buffer.copy_to(data);
 }
 
-async fn encrypt_rsa_private_key(private_key: &CryptoKey) -> (Vec<u8>, [u8; 16 * PRIVATE_KEY_BLOCKS]) {
+async fn encrypt_rsa_private_key(
+    private_key: &CryptoKey,
+) -> (Vec<u8>, [u8; 16 * PRIVATE_KEY_BLOCKS]) {
     let mut private_key_raw = export_key(private_key, "pkcs8").await;
     let length = private_key_raw.len();
     while private_key_raw.len() % PRIVATE_KEY_BLOCKS != 0 {
@@ -626,11 +732,17 @@ async fn encrypt_rsa_private_key(private_key: &CryptoKey) -> (Vec<u8>, [u8; 16 *
     };
 
     let mut nonce: [u8; 16 * PRIVATE_KEY_BLOCKS] = [0; 16 * PRIVATE_KEY_BLOCKS];
-    WebPage::crypto().get_random_values_with_u8_array(&mut nonce).unwrap();
+    WebPage::crypto()
+        .get_random_values_with_u8_array(&mut nonce)
+        .unwrap();
 
     for i in 0..PRIVATE_KEY_BLOCKS {
-        encrypt_aes(&encryption.keys[i], &nonce[(i * 16)..((i + 1) * 16)],
-        &mut private_key_raw_parts[i]).await;
+        encrypt_aes(
+            &encryption.keys[i],
+            &nonce[(i * 16)..((i + 1) * 16)],
+            &mut private_key_raw_parts[i],
+        )
+        .await;
     }
 
     private_key_raw.clear();
