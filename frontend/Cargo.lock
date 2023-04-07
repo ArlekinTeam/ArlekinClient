@@ -61,6 +61,7 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-logger",
+ "wasm-sockets",
  "web-sys",
  "yew",
  "yew-router",
@@ -1342,6 +1343,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "074649a66bb306c8f2068c9016395fa65d8e08d2affcbf95acf3c24c3ab19718"
 dependencies = [
  "log",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
+name = "wasm-sockets"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d14bbe65995269301ab677e5d69b3b69195447c01137ef44f72b10eecea55c77"
+dependencies = [
+ "js-sys",
+ "log",
+ "thiserror",
  "wasm-bindgen",
  "web-sys",
 ]

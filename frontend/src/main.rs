@@ -6,6 +6,7 @@ pub mod common;
 pub mod direct_messages_views;
 pub mod helpers;
 pub mod localization;
+pub mod notifier;
 pub mod route;
 
 #[macro_use]

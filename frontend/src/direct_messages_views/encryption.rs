@@ -36,7 +36,7 @@ lazy_static! {
     static ref CACHED_ENCRYPTION_BLOCKS_PRIVATE: Mutex<LruCache<i64, UnsafeSync<Arc<CryptoKey>>>> =
         Mutex::new(LruCache::new(NonZeroUsize::new(100).unwrap()));
     static ref CACHED_ENCRYPTION_KEYS: Mutex<LruCache<i64, Arc<EncryptionKey>>> =
-        Mutex::new(LruCache::new(NonZeroUsize::new(100).unwrap()));
+        Mutex::new(LruCache::new(NonZeroUsize::new(512).unwrap()));
 }
 
 struct PrivateKeyEncryptionData {
@@ -174,7 +174,7 @@ pub async fn init(app_callback: Callback<app::Msg>, encryption_block_hash: &[u8]
     }))));
 }
 
-pub async fn put_new_encryption_block(_app_callback: Callback<app::Msg>, direct_channel_id: i64) {
+pub async fn put_new_encryption_block(direct_channel_id: i64) {
     let (public_key, private_key) = generate_rsa().await;
     let (encrypted_private_key, nonce) = encrypt_rsa_private_key(&private_key).await;
     let public_key = export_key(&public_key, "spki").await;
@@ -220,8 +220,8 @@ pub async fn put_new_encryption_block(_app_callback: Callback<app::Msg>, direct_
     };
 }
 
-pub async fn put_new_encryption_key(app_callback: Callback<app::Msg>, direct_channel_id: i64) {
-    put_new_encryption_block(app_callback.clone(), direct_channel_id).await;
+pub async fn put_new_encryption_key(direct_channel_id: i64) {
+    put_new_encryption_block(direct_channel_id).await;
 
     let response = api::post("channels/direct/encryption/getpublickeys")
         .body(&json!({ "directChannelId": direct_channel_id }))
@@ -233,7 +233,7 @@ pub async fn put_new_encryption_key(app_callback: Callback<app::Msg>, direct_cha
                 .json::<EncryptionPublicKeyResponseData>()
                 .await
                 .unwrap();
-            put_new_encryption_key_worker(app_callback, direct_channel_id, r.public_keys).await;
+            put_new_encryption_key_worker(direct_channel_id, r.public_keys).await;
         }
         400 => {
             todo!();
@@ -242,8 +242,30 @@ pub async fn put_new_encryption_key(app_callback: Callback<app::Msg>, direct_cha
     };
 }
 
+pub async fn decrypt_message(
+    direct_channel_id: i64,
+    direct_message_id: i64,
+    author_user_id: i64,
+    encryption_key_id: i64,
+    nonce: String,
+    encrypted_text: String,
+) -> ChannelMessage {
+    let key = get_encryption_key(direct_channel_id, encryption_key_id).await;
+
+    let nonce = general_purpose::STANDARD.decode(nonce).unwrap();
+    let mut text = general_purpose::STANDARD.decode(encrypted_text).unwrap();
+
+    decrypt_aes(&key.key, &nonce, &mut text).await;
+
+    ChannelMessage {
+        message_id: direct_message_id,
+        author_user_id,
+        text: Arc::new(String::from_utf8(text).unwrap()),
+    }
+}
+
 pub async fn get_messages(
-    app_callback: Callback<app::Msg>,
+    _app_callback: Callback<app::Msg>,
     direct_channel_id: i64,
     before_direct_message_id: i64,
 ) -> Vec<ChannelMessage> {
@@ -266,25 +288,17 @@ pub async fn get_messages(
 
     let mut result = Vec::with_capacity(messages.len());
     for message in messages {
-        let key = get_encryption_key(
-            app_callback.clone(),
-            direct_channel_id,
-            message.encryption_key_id,
-        )
-        .await;
-
-        let nonce = general_purpose::STANDARD.decode(message.nonce).unwrap();
-        let mut text = general_purpose::STANDARD
-            .decode(message.encrypted_text)
-            .unwrap();
-
-        decrypt_aes(&key.key, &nonce, &mut text).await;
-
-        result.push(ChannelMessage {
-            message_id: message.direct_message_id,
-            author_user_id: message.author_user_id,
-            text: Arc::new(String::from_utf8(text).unwrap()),
-        });
+        result.push(
+            decrypt_message(
+                direct_channel_id,
+                message.direct_message_id,
+                message.author_user_id,
+                message.encryption_key_id,
+                message.nonce,
+                message.encrypted_text,
+            )
+            .await,
+        );
     }
 
     result
@@ -293,7 +307,7 @@ pub async fn get_messages(
 pub fn send_message(app_callback: Callback<app::Msg>, direct_channel_id: i64, content: String) {
     wasm_bindgen_futures::spawn_local(async move {
         // Zero for newest.
-        let key = get_encryption_key(app_callback.clone(), direct_channel_id, 0).await;
+        let key = get_encryption_key(direct_channel_id, 0).await;
 
         let mut nonce: [u8; 16] = Default::default();
         WebPage::crypto()
@@ -352,11 +366,7 @@ async fn put_middle_keys(
     }
 }
 
-async fn get_encryption_key(
-    app_callback: Callback<app::Msg>,
-    direct_channel_id: i64,
-    encryption_key_id: i64,
-) -> Arc<EncryptionKey> {
+async fn get_encryption_key(direct_channel_id: i64, encryption_key_id: i64) -> Arc<EncryptionKey> {
     loop {
         if let Some(key) = CACHED_ENCRYPTION_KEYS
             .lock()
@@ -380,12 +390,7 @@ async fn get_encryption_key(
                     .await
                     .unwrap();
 
-                let private_key = get_private_key(
-                    app_callback.clone(),
-                    direct_channel_id,
-                    r.encryption_block_id,
-                )
-                .await;
+                let private_key = get_private_key(direct_channel_id, r.encryption_block_id).await;
                 let mut buffer = general_purpose::STANDARD.decode(r.encrypted_key).unwrap();
                 buffer = decrypt_rsa(&private_key, &mut buffer).await;
                 let key = import_aes(&buffer).await;
@@ -414,7 +419,7 @@ async fn get_encryption_key(
                         .code
                         == 3003
                 {
-                    put_new_encryption_key(app_callback.clone(), direct_channel_id).await;
+                    put_new_encryption_key(direct_channel_id).await;
                     continue;
                 }
 
@@ -425,11 +430,7 @@ async fn get_encryption_key(
     }
 }
 
-async fn get_private_key(
-    _app_callback: Callback<app::Msg>,
-    direct_channel_id: i64,
-    encryption_block_id: i64,
-) -> Arc<CryptoKey> {
+async fn get_private_key(direct_channel_id: i64, encryption_block_id: i64) -> Arc<CryptoKey> {
     loop {
         if let Some(key) = CACHED_ENCRYPTION_BLOCKS_PRIVATE
             .lock()
@@ -506,7 +507,6 @@ async fn get_private_key_worker(
 }
 
 async fn put_new_encryption_key_worker(
-    _app_callback: Callback<app::Msg>,
     direct_channel_id: i64,
     public_keys: Vec<EncryptionPublicKeyElementResponseData>,
 ) {
