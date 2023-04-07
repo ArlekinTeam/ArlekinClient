@@ -69,7 +69,7 @@ fn connect_worker(
     data: GetWsResponseData,
 ) -> Result<(), WebSocketError> {
     let client = Arc::new(RefCell::new(wasm_sockets::PollingClient::new(&format!(
-        "ws://{}/api/v1/notifier/ws?token={}",
+        "{}/api/v1/notifier/ws?token={}",
         data.address, data.token
     ))?));
 
