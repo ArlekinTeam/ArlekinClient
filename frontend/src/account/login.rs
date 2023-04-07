@@ -10,8 +10,8 @@ use crate::{
     app,
     direct_messages_views::encryption,
     helpers::prelude::*,
-    localization,
-    route::{Route, Router}, notifier,
+    localization, notifier,
+    route::{Route, Router},
 };
 
 pub struct Login {

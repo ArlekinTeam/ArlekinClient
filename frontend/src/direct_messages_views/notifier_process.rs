@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::channel_views::channel;
 
@@ -12,16 +12,20 @@ pub struct ReceivedDirectMessageData {
     author_user_id: i64,
     encryption_key_id: i64,
     nonce: String,
-    encrypted_text: String
+    encrypted_text: String,
 }
 
 pub async fn received_direct_message(data: ReceivedDirectMessageData) {
-    channel::notify_message(data.direct_channel_id, encryption::decrypt_message(
+    channel::notify_message(
         data.direct_channel_id,
-        data.direct_message_id,
-        data.author_user_id,
-        data.encryption_key_id,
-        data.nonce,
-        data.encrypted_text
-    ).await);
+        encryption::decrypt_message(
+            data.direct_channel_id,
+            data.direct_message_id,
+            data.author_user_id,
+            data.encryption_key_id,
+            data.nonce,
+            data.encrypted_text,
+        )
+        .await,
+    );
 }

@@ -1,6 +1,7 @@
 use std::{
+    marker::PhantomData,
     num::NonZeroUsize,
-    sync::{Arc, Mutex}, marker::PhantomData,
+    sync::{Arc, Mutex},
 };
 
 use lru::LruCache;
@@ -29,7 +30,7 @@ where
     T: Clone + PartialEq + 'static,
 {
     user: Option<Arc<User>>,
-    phantom: PhantomData<T>
+    phantom: PhantomData<T>,
 }
 
 pub struct LoadUserContext<T>
@@ -66,7 +67,7 @@ where
     fn create(ctx: &Context<Self>) -> Self {
         let s = Self {
             user: None,
-            phantom: PhantomData
+            phantom: PhantomData,
         };
         s.load(ctx);
         s

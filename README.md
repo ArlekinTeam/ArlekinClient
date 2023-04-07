@@ -41,5 +41,5 @@ cargo fmt
 
 Clippy ([installation guide](https://github.com/rust-lang/rust-clippy#step-2-install-clippy)):
 ```
-cargo clippy
+cargo clippy --target wasm32-unknown-unknown
 ```

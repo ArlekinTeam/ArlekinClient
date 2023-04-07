@@ -1,4 +1,7 @@
-use std::{sync::{Arc, Mutex}, num::NonZeroUsize};
+use std::{
+    num::NonZeroUsize,
+    sync::{Arc, Mutex},
+};
 
 use arc_cell::ArcCell;
 use lru::LruCache;
@@ -7,16 +10,16 @@ use yew::prelude::*;
 use crate::{
     account::load_user::{LoadUser, LoadUserContext},
     app,
+    common::UnsafeSync,
     direct_messages_views::encryption,
     helpers::prelude::*,
     localization,
-    route::{self, Route}, common::UnsafeSync,
+    route::{self, Route},
 };
 
 lazy_static! {
     static ref OPENED_CHANNEL: ArcCell<Option<(i64, UnsafeSync<Callback<Msg>>)>> =
         ArcCell::default();
-
     static ref CACHED_MESSAGES: Mutex<LruCache<i64, Arc<Mutex<Vec<ChannelMessage>>>>> =
         Mutex::new(LruCache::new(NonZeroUsize::new(64).unwrap()));
 }
@@ -49,7 +52,7 @@ pub enum Msg {
     Refresh,
     Reload,
     Load(Vec<ChannelMessage>),
-    Send
+    Send,
 }
 
 #[derive(Clone)]
@@ -69,12 +72,13 @@ impl Component for Channel {
 
         let s = Self {
             props: ctx.props().clone(),
-            messages: messages.cloned()
+            messages: messages.cloned(),
         };
         s.load(ctx);
 
         OPENED_CHANNEL.set(Arc::new(Some((
-            s.props.channel_id, ctx.link().callback(|m| m).into()
+            s.props.channel_id,
+            ctx.link().callback(|m| m).into(),
         ))));
 
         s
@@ -147,16 +151,19 @@ impl Channel {
         let channel_id = self.props.channel_id;
 
         wasm_bindgen_futures::spawn_local(async move {
-            callback.emit(encryption::get_messages(
-                app_callback, channel_id, 0
-            ).await);
+            callback.emit(encryption::get_messages(app_callback, channel_id, 0).await);
         });
     }
 
     fn load_set(&mut self, messages: Vec<ChannelMessage>) {
-        if let None = self.messages {
-            self.messages = Some(CACHED_MESSAGES.lock().unwrap()
-                .get_or_insert(self.props.channel_id, || Arc::new(Mutex::new(Vec::new()))).clone());
+        if self.messages.is_none() {
+            self.messages = Some(
+                CACHED_MESSAGES
+                    .lock()
+                    .unwrap()
+                    .get_or_insert(self.props.channel_id, || Arc::new(Mutex::new(Vec::new())))
+                    .clone(),
+            );
         }
         let destination = self.messages.as_ref().unwrap();
 

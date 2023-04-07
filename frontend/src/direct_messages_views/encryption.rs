@@ -243,25 +243,23 @@ pub async fn put_new_encryption_key(direct_channel_id: i64) {
 }
 
 pub async fn decrypt_message(
-    direct_channel_id: i64, direct_message_id: i64, author_user_id: i64, encryption_key_id: i64, nonce: String,
-    encrypted_text: String
+    direct_channel_id: i64,
+    direct_message_id: i64,
+    author_user_id: i64,
+    encryption_key_id: i64,
+    nonce: String,
+    encrypted_text: String,
 ) -> ChannelMessage {
-    let key = get_encryption_key(
-        direct_channel_id,
-        encryption_key_id,
-    )
-    .await;
+    let key = get_encryption_key(direct_channel_id, encryption_key_id).await;
 
     let nonce = general_purpose::STANDARD.decode(nonce).unwrap();
-    let mut text = general_purpose::STANDARD
-        .decode(encrypted_text)
-        .unwrap();
+    let mut text = general_purpose::STANDARD.decode(encrypted_text).unwrap();
 
     decrypt_aes(&key.key, &nonce, &mut text).await;
 
     ChannelMessage {
         message_id: direct_message_id,
-        author_user_id: author_user_id,
+        author_user_id,
         text: Arc::new(String::from_utf8(text).unwrap()),
     }
 }
@@ -290,14 +288,17 @@ pub async fn get_messages(
 
     let mut result = Vec::with_capacity(messages.len());
     for message in messages {
-        result.push(decrypt_message(
-            direct_channel_id,
-            message.direct_message_id,
-            message.author_user_id,
-            message.encryption_key_id,
-            message.nonce,
-            message.encrypted_text
-        ).await);
+        result.push(
+            decrypt_message(
+                direct_channel_id,
+                message.direct_message_id,
+                message.author_user_id,
+                message.encryption_key_id,
+                message.nonce,
+                message.encrypted_text,
+            )
+            .await,
+        );
     }
 
     result
@@ -365,10 +366,7 @@ async fn put_middle_keys(
     }
 }
 
-async fn get_encryption_key(
-    direct_channel_id: i64,
-    encryption_key_id: i64,
-) -> Arc<EncryptionKey> {
+async fn get_encryption_key(direct_channel_id: i64, encryption_key_id: i64) -> Arc<EncryptionKey> {
     loop {
         if let Some(key) = CACHED_ENCRYPTION_KEYS
             .lock()
@@ -392,11 +390,7 @@ async fn get_encryption_key(
                     .await
                     .unwrap();
 
-                let private_key = get_private_key(
-                    direct_channel_id,
-                    r.encryption_block_id,
-                )
-                .await;
+                let private_key = get_private_key(direct_channel_id, r.encryption_block_id).await;
                 let mut buffer = general_purpose::STANDARD.decode(r.encrypted_key).unwrap();
                 buffer = decrypt_rsa(&private_key, &mut buffer).await;
                 let key = import_aes(&buffer).await;
@@ -436,10 +430,7 @@ async fn get_encryption_key(
     }
 }
 
-async fn get_private_key(
-    direct_channel_id: i64,
-    encryption_block_id: i64,
-) -> Arc<CryptoKey> {
+async fn get_private_key(direct_channel_id: i64, encryption_block_id: i64) -> Arc<CryptoKey> {
     loop {
         if let Some(key) = CACHED_ENCRYPTION_BLOCKS_PRIVATE
             .lock()
