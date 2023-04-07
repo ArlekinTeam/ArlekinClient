@@ -46,7 +46,10 @@ impl Component for App {
             let content = if self.openned_channel == 0 {
                 html! { <Friends app_callback={app_callback.clone()} /> }
             } else {
-                html! { <Channel app_callback={app_callback.clone()} channel_id={self.openned_channel} /> }
+                html! { <>
+                    <link rel="stylesheet" href="/static/css/channel_views/channel.css" />
+                    <Channel app_callback={app_callback.clone()} channel_id={self.openned_channel} />
+                </> }
             };
 
             html! {

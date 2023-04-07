@@ -7,6 +7,7 @@ pub mod direct_messages_views;
 pub mod helpers;
 pub mod localization;
 pub mod route;
+pub mod notifier;
 
 #[macro_use]
 extern crate lazy_static;

@@ -1,6 +1,6 @@
 use std::{
     num::NonZeroUsize,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex}, marker::PhantomData,
 };
 
 use lru::LruCache;
@@ -28,8 +28,8 @@ pub struct LoadUser<T>
 where
     T: Clone + PartialEq + 'static,
 {
-    props: Props<T>,
     user: Option<Arc<User>>,
+    phantom: PhantomData<T>
 }
 
 pub struct LoadUserContext<T>
@@ -65,8 +65,8 @@ where
 
     fn create(ctx: &Context<Self>) -> Self {
         let s = Self {
-            props: ctx.props().clone(),
             user: None,
+            phantom: PhantomData
         };
         s.load(ctx);
         s
@@ -83,10 +83,17 @@ where
         true
     }
 
-    fn view(&self, _: &Context<Self>) -> Html {
-        self.props.view.emit(LoadUserContext {
+    fn view(&self, ctx: &Context<Self>) -> Html {
+        if let Some(user) = self.user.as_ref() {
+            if user.user_id != ctx.props().user_id {
+                ctx.link().callback(|_| Msg::Reload).emit(());
+                return html! {};
+            }
+        }
+
+        ctx.props().view.emit(LoadUserContext {
             user: self.user.clone(),
-            props: self.props.props.clone(),
+            props: ctx.props().props.clone(),
         })
     }
 }
@@ -97,12 +104,12 @@ where
 {
     fn load(&self, ctx: &Context<Self>) {
         let callback = ctx.link().callback(Msg::Load);
-        if let Some(user) = CACHED_USERS.lock().unwrap().get(&self.props.user_id) {
+        if let Some(user) = CACHED_USERS.lock().unwrap().get(&ctx.props().user_id) {
             callback.emit(user.clone());
             return;
         }
 
-        let user_id = self.props.user_id;
+        let user_id = ctx.props().user_id;
         wasm_bindgen_futures::spawn_local(async move {
             let _lock = REQUESTING_LOCK.lock().await;
             if let Some(user) = CACHED_USERS.lock().unwrap().get(&user_id) {

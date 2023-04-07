@@ -1,5 +1,7 @@
-use std::sync::Arc;
+use std::{sync::{Arc, Mutex}, num::NonZeroUsize};
 
+use arc_cell::ArcCell;
+use lru::LruCache;
 use yew::prelude::*;
 
 use crate::{
@@ -8,12 +10,33 @@ use crate::{
     direct_messages_views::encryption,
     helpers::prelude::*,
     localization,
-    route::{self, Route},
+    route::{self, Route}, common::UnsafeSync,
 };
+
+lazy_static! {
+    static ref OPENED_CHANNEL: ArcCell<Option<(i64, UnsafeSync<Callback<Msg>>)>> =
+        ArcCell::default();
+
+    static ref CACHED_MESSAGES: Mutex<LruCache<i64, Arc<Mutex<Vec<ChannelMessage>>>>> =
+        Mutex::new(LruCache::new(NonZeroUsize::new(64).unwrap()));
+}
+
+pub fn notify_message(channel_id: i64, message: ChannelMessage) {
+    if let Some(messages) = CACHED_MESSAGES.lock().unwrap().get(&channel_id) {
+        messages.lock().unwrap().push(message);
+    }
+
+    let opened_channel = OPENED_CHANNEL.get();
+    if let Some((id, callback)) = opened_channel.as_ref() {
+        if channel_id == *id {
+            callback.0.emit(Msg::Refresh);
+        }
+    }
+}
 
 pub struct Channel {
     props: Props,
-    messages: Option<Vec<ChannelMessage>>,
+    messages: Option<Arc<Mutex<Vec<ChannelMessage>>>>,
 }
 
 #[derive(Properties, PartialEq, Clone)]
@@ -23,11 +46,13 @@ pub struct Props {
 }
 
 pub enum Msg {
-    Load(Vec<ChannelMessage>),
+    Refresh,
     Reload,
-    Send,
+    Load(Vec<ChannelMessage>),
+    Send
 }
 
+#[derive(Clone)]
 pub struct ChannelMessage {
     pub message_id: i64,
     pub author_user_id: i64,
@@ -39,18 +64,27 @@ impl Component for Channel {
     type Properties = Props;
 
     fn create(ctx: &Context<Self>) -> Self {
+        let mut lock = CACHED_MESSAGES.lock().unwrap();
+        let messages = lock.get(&ctx.props().channel_id);
+
         let s = Self {
             props: ctx.props().clone(),
-            messages: None,
+            messages: messages.cloned()
         };
         s.load(ctx);
+
+        OPENED_CHANNEL.set(Arc::new(Some((
+            s.props.channel_id, ctx.link().callback(|m| m).into()
+        ))));
+
         s
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
+            Msg::Refresh => (),
             Msg::Reload => self.load(ctx),
-            Msg::Load(messages) => self.messages = Some(messages),
+            Msg::Load(messages) => self.load_set(messages),
             Msg::Send => self.send(ctx),
         };
         true
@@ -60,16 +94,33 @@ impl Component for Channel {
         let lang = localization::get_language();
 
         let content = match &self.messages {
-            Some(messages) => {
+            Some(arc) => {
+                let messages = arc.lock().unwrap();
+
                 let mut vec = Vec::with_capacity(messages.len());
-                for message in messages.iter().rev() {
-                    vec.push(html! {
-                        <LoadUser<Arc<String>>
-                            props={message.text.clone()}
-                            app_callback={self.props.app_callback.clone()}
-                            user_id={message.author_user_id}
-                            view={Callback::from(process_message_view)}
-                        />
+
+                let mut last_author = 0;
+                let mut count = 0;
+
+                for message in messages.iter() {
+                    vec.push(if last_author == message.author_user_id && count < 10 {
+                        count += 1;
+                        html! {
+                            <div class="channel-message">
+                                <label class="message-without-avatar">{message.text.clone()}</label>
+                            </div>
+                        }
+                    } else {
+                        last_author = message.author_user_id;
+                        count = 1;
+                        html! {
+                            <LoadUser<Arc<String>>
+                                props={message.text.clone()}
+                                app_callback={self.props.app_callback.clone()}
+                                user_id={message.author_user_id}
+                                view={Callback::from(process_message_view)}
+                            />
+                        }
                     });
                 }
 
@@ -80,7 +131,6 @@ impl Component for Channel {
 
         html! { <>
             <route::Router route={Route::Chat { id: self.props.channel_id }} />
-            <link rel="stylesheet" href="/static/css/channel_views/channel.css" />
 
             {content}
 
@@ -97,8 +147,24 @@ impl Channel {
         let channel_id = self.props.channel_id;
 
         wasm_bindgen_futures::spawn_local(async move {
-            callback.emit(encryption::get_messages(app_callback, channel_id, 0).await);
+            callback.emit(encryption::get_messages(
+                app_callback, channel_id, 0
+            ).await);
         });
+    }
+
+    fn load_set(&mut self, messages: Vec<ChannelMessage>) {
+        if let None = self.messages {
+            self.messages = Some(CACHED_MESSAGES.lock().unwrap()
+                .get_or_insert(self.props.channel_id, || Arc::new(Mutex::new(Vec::new()))).clone());
+        }
+        let destination = self.messages.as_ref().unwrap();
+
+        let mut lock = destination.lock().unwrap();
+        lock.clear();
+        for message in messages.iter().rev() {
+            lock.push(message.clone());
+        }
     }
 
     fn send(&self, _: &Context<Self>) {
@@ -118,7 +184,7 @@ fn process_message_view(ctx: LoadUserContext<Arc<String>>) -> Html {
     let user = ctx.user.unwrap();
 
     html! {
-        <div class="channel-message">
+        <div class="channel-message channel-message-with-avatar">
             <img class="message-avatar noselect" src={user.avatar_url.clone()} alt={"avatar"} />
             <div>
                 <label class="message-name">{user.name.clone()}</label>

@@ -11,7 +11,7 @@ use crate::{
     direct_messages_views::encryption,
     helpers::prelude::*,
     localization,
-    route::{Route, Router},
+    route::{Route, Router}, notifier,
 };
 
 pub struct Login {
@@ -139,7 +139,10 @@ impl Login {
                             encryption::init(b.clone(), &a).await;
 
                             // TODO: remove this. Move to registration.
-                            encryption::put_new_encryption_block(b, 0).await;
+                            encryption::put_new_encryption_block(0).await;
+
+                            // TODO: remove this. Move to app.
+                            notifier::connect(b);
                         });
                         app_callback.emit(app::Msg::Login);
                     }
