@@ -1,0 +1,49 @@
+.login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 90vh;
+    overflow-y: hidden;
+}
+
+#login-items-main {
+    background-color: rgba(20, 20, 23, 0.7);
+    backdrop-filter: blur(10px);
+    width: 25em;
+    text-align: center;
+    padding: 5em;
+    border-radius: 7.5px;
+}
+
+#login-header {
+    font-weight: bold;
+    margin-bottom: 0;
+}
+
+#login-items {
+    text-align: center;
+    margin: auto;
+}
+
+#login-items input {
+    padding: 1em;
+    width: 30em;
+    border-radius: 10px;
+    border: none;
+    margin-top: 5px;
+    background-color: #1e1e2e;
+    color: #fff;
+}
+
+#login-items button {
+    width: 32em;
+    background-color: #0DAB76;
+    color: #fff;
+    font-weight: bold;
+}
+
+#welcome-text {
+    font-size: 16px;
+    margin-top: 0;
+    font-weight: lighter;
+}

@@ -1,9 +1,9 @@
 :root {
-    --background: #322f36;
+    --background: #11111b;
     --text: #dbdee1;
 
     --background-brighter: #47444a;
-
+    --background-drulple: #1e1e2e;
     --button-color: #322f36;
     --button-hover-color: #4c4850;
     --button-selected-color: #5e5a62;
