@@ -28,3 +28,8 @@
 .channel-message .message-without-avatar {
     padding-left: 3.5em;
 }
+
+.channel-message .message-error {
+    color: red;
+    font-style: italic;
+}

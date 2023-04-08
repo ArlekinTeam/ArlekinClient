@@ -74,7 +74,7 @@ impl Component for FriendsList {
                 for e in &data.friends {
                     let user_id = *e;
                     vec.push(html! {
-                        <div class="friends-profile-container">
+                        <div class="user-profile-container friends-profile-container">
                             <LoadUser<()>
                                 props={()}
                                 app_callback={self.props.app_callback.clone()}
@@ -135,12 +135,12 @@ fn process_user_view(ctx: LoadUserContext<()>) -> Html {
     let user = ctx.user.unwrap();
 
     html! {
-        <div class="friends-profile">
-            <img class="friends-avatar" src={user.avatar_url.clone()} alt={"avatar"} />
+        <div class="user-profile">
+            <img class="user-avatar" src={user.avatar_url.clone()} alt={"avatar"} />
             <div class="select">
-                <label class="friends-name">{user.name.clone()}</label>
+                <label class="user-name">{user.name.clone()}</label>
                 <br/>
-                <span class="friends-username">{"@"}{user.username.clone()}</span>
+                <span class="user-info">{"@"}{user.username.clone()}</span>
             </div>
         </div>
     }

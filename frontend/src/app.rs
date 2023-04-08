@@ -42,24 +42,31 @@ impl Component for App {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let app_callback = ctx.link().callback(|m| m);
-        if self.logged_in {
-            let content = if self.openned_channel == 0 {
-                html! { <Friends app_callback={app_callback.clone()} /> }
-            } else {
-                html! { <>
-                    <link rel="stylesheet" href="/static/css/channel_views/channel.css" />
-                    <Channel app_callback={app_callback.clone()} channel_id={self.openned_channel} />
-                </> }
-            };
+        if !self.logged_in {
+            return html! { <Login {app_callback} /> };
+        }
 
-            html! {
-                <>
-                    <DirectMessages app_callback={app_callback} />
-                    {content}
-                </>
-            }
+        let content = if self.openned_channel == 0 {
+            html! { <Friends app_callback={app_callback.clone()} /> }
         } else {
-            html! { <Login {app_callback} /> }
+            html! { <Channel app_callback={app_callback.clone()} channel_id={self.openned_channel} /> }
+        };
+
+        html! {
+            <>
+                <link rel="stylesheet" href="/static/css/app.css" />
+                <link rel="stylesheet" href="/static/css/channel_views/channel.css" />
+                <link rel="stylesheet" href="/static/css/account/friends.css" />
+
+                <div class="app">
+                    <div class="app-navigator">
+                        <DirectMessages app_callback={app_callback} />
+                    </div>
+                    <div class="app-content">
+                        {content}
+                    </div>
+                </div>
+            </>
         }
     }
 }
