@@ -84,14 +84,11 @@ impl Component for Channel {
     type Properties = Props;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let mut lock = CACHED_MESSAGES.lock().unwrap();
-        let messages = lock.get(&ctx.props().channel_id);
-
-        let s = Self {
-            channel_id: ctx.props().channel_id,
-            messages: messages.cloned(),
+        let mut s = Self {
+            channel_id: 0,
+            messages: None,
         };
-        s.load(ctx);
+        s.change_channel(ctx);
         s
     }
 
@@ -205,7 +202,7 @@ impl Channel {
         self.messages = messages.cloned();
 
         if messages.is_none() {
-            ctx.link().callback(|_| Msg::Reload).emit(());
+            self.load(ctx);
         }
     }
 
