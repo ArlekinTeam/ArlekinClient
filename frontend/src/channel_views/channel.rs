@@ -162,12 +162,11 @@ impl Component for Channel {
 
 impl Channel {
     fn load(&self, ctx: &Context<Self>) {
-        let app_callback = ctx.props().app_callback.clone();
         let callback = ctx.link().callback(Msg::Load);
         let channel_id = ctx.props().channel_id;
 
         wasm_bindgen_futures::spawn_local(async move {
-            callback.emit(encryption::get_messages(app_callback, channel_id, 0).await);
+            callback.emit(encryption::get_messages(channel_id, 0).await);
         });
     }
 

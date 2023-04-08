@@ -8,6 +8,7 @@ pub mod helpers;
 pub mod localization;
 pub mod notifier;
 pub mod route;
+pub mod app_status_bar;
 
 #[macro_use]
 extern crate lazy_static;

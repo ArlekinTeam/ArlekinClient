@@ -132,7 +132,7 @@ struct MessagesGetResultData {
     messages: Vec<MessagesGetElementResultData>,
 }
 
-pub async fn init(app_callback: Callback<app::Msg>, encryption_block_hash: &[u8]) {
+pub async fn init(_app_callback: Callback<app::Msg>, encryption_block_hash: &[u8]) {
     let response = api::post("channels/direct/encryption/getmiddlekeys")
         .send_async()
         .await;
@@ -145,7 +145,7 @@ pub async fn init(app_callback: Callback<app::Msg>, encryption_block_hash: &[u8]
             errors.len() == 1
                 && errors.get("").unwrap_or(&ErrorDataElement::default()).code == 3004
             {
-                put_middle_keys(app_callback, encryption_block_hash).await
+                put_middle_keys(encryption_block_hash).await
             } else {
                 todo!();
             }
@@ -275,11 +275,7 @@ pub async fn decrypt_message(
     }
 }
 
-pub async fn get_messages(
-    _app_callback: Callback<app::Msg>,
-    direct_channel_id: i64,
-    before_direct_message_id: i64,
-) -> Vec<ChannelMessage> {
+pub async fn get_messages(direct_channel_id: i64, before_direct_message_id: i64) -> Vec<ChannelMessage> {
     let response = api::get("channels/direct/messages")
         .query([
             ("directChannelId", direct_channel_id.to_string()),
@@ -345,10 +341,7 @@ pub fn send_message(app_callback: Callback<app::Msg>, direct_channel_id: i64, co
     });
 }
 
-async fn put_middle_keys(
-    _app_callback: Callback<app::Msg>,
-    encryption_block_hash: &[u8],
-) -> GetMiddleKeysResponseData {
+async fn put_middle_keys(encryption_block_hash: &[u8]) -> GetMiddleKeysResponseData {
     let mut keys = Vec::new();
     let mut encrypted_keys = Vec::new();
 
