@@ -30,42 +30,5 @@
 }
 
 .friends-profile-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
     padding: 1em;
-    border-radius: 7.5px;
-}
-
-.friends-profile-container:hover {
-    background-color: var(--background-brighter);
-}
-
-.friends-profile-container button {
-    background-color: var(--button-darker-color);
-    margin-left: 0.25em;
-    margin-right: 0.25em;
-}
-
-.friends-profile {
-    display: flex;
-    justify-content: left;
-    align-items: center;
-}
-
-.friends-profile .friends-avatar {
-    border-radius: 100%;
-    margin-right: 0.5em;
-    width: 3em;
-    height: 3em;
-}
-
-.friends-profile .friends-name {
-    font-weight: bold;
-}
-
-.friends-profile .friends-username {
-    font-weight: 300;
-    font-size: small;
 }

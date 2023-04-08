@@ -3,7 +3,7 @@ use yew::prelude::*;
 
 use crate::{
     api::{self, ApiResponse},
-    app,
+    app, account::load_user::{LoadUserContext, LoadUser},
 };
 
 pub struct DirectMessages {
@@ -24,7 +24,24 @@ pub enum Msg {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DirectMessagesLoadResponseData {
-    channel_ids: Vec<i64>,
+    direct_channels: Vec<DirectChannelResponseData>,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DirectChannelResponseData {
+    direct_channel_id: i64,
+    is_group: bool,
+    user_id: i64,
+    group_data: Option<GroupResponseData>
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GroupResponseData {
+    name: String,
+    avatar_url: String,
+    user_count: i32
 }
 
 impl Component for DirectMessages {
@@ -53,11 +70,24 @@ impl Component for DirectMessages {
             Some(data) => {
                 let mut vec = Vec::new();
 
-                for e in &data.channel_ids {
-                    let channel_id = *e;
+                for data in &data.direct_channels {
+                    if data.is_group {
+                        todo!();
+                    }
+
+                    let a = self.props.app_callback.clone();
+                    let channel_id = data.direct_channel_id;
                     vec.push(html! {
-                        <div class="friends-profile-container">
-                            <h2>{channel_id}</h2>
+                        <div
+                            onclick={Callback::from(move |_| a.emit(app::Msg::OpennedChannel(channel_id)))}
+                            class="user-profile-container"
+                        >
+                            <LoadUser<()>
+                                props={()}
+                                app_callback={self.props.app_callback.clone()}
+                                user_id={data.user_id}
+                                view={Callback::from(process_user_channel_view)}
+                            />
                         </div>
                     })
                 }
@@ -67,9 +97,14 @@ impl Component for DirectMessages {
             None => vec![html! { <p>{"Loading..."}</p> }],
         };
 
-        html! { <>
-            {data}
-        </> }
+        let a = self.props.app_callback.clone();
+        html! {
+            <div>
+                <p onclick={Callback::from(move |_| a.emit(app::Msg::OpennedChannel(0)))}>{"Friends"}</p>
+
+                {data}
+            </div>
+        }
     }
 }
 
@@ -77,12 +112,30 @@ impl DirectMessages {
     fn load(&self, ctx: &Context<Self>) {
         let callback = ctx.link().callback(Msg::Load);
 
-        api::get("channels/direct").send(
+        api::get("channels/direct/todo2").send(
             self.props.app_callback.clone(),
             move |r: ApiResponse<DirectMessagesLoadResponseData>| match r {
                 ApiResponse::Ok(r) => callback.emit(r),
                 ApiResponse::BadRequest(_) => todo!(),
             },
         );
+    }
+}
+
+fn process_user_channel_view(ctx: LoadUserContext<()>) -> Html {
+    if ctx.user.is_none() {
+        return html! { {"Loading..."} };
+    }
+    let user = ctx.user.unwrap();
+
+    process_channel_view(&user.name, &user.avatar_url)
+}
+
+fn process_channel_view(name: &str, avatar_url: &str) -> Html {
+    html! {
+        <div class="user-profile">
+            <img class="user-avatar noselect" src={avatar_url.to_owned()} alt={"avatar"} />
+            <span class="friends-name">{name.to_owned()}</span>
+        </div>
     }
 }

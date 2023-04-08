@@ -64,7 +64,6 @@ impl Component for Friends {
         html! {
             <div class="noselect">
                 <route::Router route={Route::Friends} />
-                <link rel="stylesheet" href="/static/css/account/friends.css" />
 
                 <header class="friends-header">
                     <h1>{lang.get("viewAccountFriendsTitle")}</h1>

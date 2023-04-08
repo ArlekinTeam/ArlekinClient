@@ -1,0 +1,53 @@
+.app {
+    display: flex;
+    justify-content: stretch;
+    align-items: start;
+}
+
+.app-navigator {
+    width: 14em;
+}
+
+.app-content {
+    width: calc(100% - 14em);
+}
+
+.user-profile-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    border-radius: 7.5px;
+}
+
+.user-profile-container:hover {
+    background-color: var(--background-brighter);
+}
+
+.user-profile-container button {
+    background-color: var(--button-darker-color);
+    margin-left: 0.25em;
+    margin-right: 0.25em;
+}
+
+.user-profile {
+    display: flex;
+    justify-content: left;
+    align-items: center;
+}
+
+.user-profile .user-avatar {
+    border-radius: 100%;
+    margin-right: 0.5em;
+    width: 3em;
+    height: 3em;
+}
+
+.user-profile .user-name {
+    font-weight: bold;
+}
+
+.user-profile .user-info {
+    font-weight: 300;
+    font-size: small;
+}
