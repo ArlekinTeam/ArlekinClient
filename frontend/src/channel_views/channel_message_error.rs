@@ -1,18 +1,18 @@
-
 use std::{error::Error, fmt::Display};
 
 use crate::direct_messages_views::encryption_error::EncryptionError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ChannelMessageError {
-    Encryption(EncryptionError)
+    Encryption(EncryptionError),
 }
 
 impl ChannelMessageError {
     pub fn to_translation_key(&self) -> &str {
         match self {
             ChannelMessageError::Encryption(e) => e,
-        }.to_translation_key()
+        }
+        .to_translation_key()
     }
 }
 

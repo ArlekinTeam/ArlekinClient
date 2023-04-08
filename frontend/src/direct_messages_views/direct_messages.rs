@@ -2,8 +2,9 @@ use serde::{Deserialize, Serialize};
 use yew::prelude::*;
 
 use crate::{
+    account::load_user::{LoadUser, LoadUserContext},
     api::{self, ApiResponse},
-    app, account::load_user::{LoadUserContext, LoadUser},
+    app,
 };
 
 pub struct DirectMessages {
@@ -33,7 +34,7 @@ struct DirectChannelResponseData {
     direct_channel_id: i64,
     is_group: bool,
     user_id: i64,
-    group_data: Option<GroupResponseData>
+    group_data: Option<GroupResponseData>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -41,7 +42,7 @@ struct DirectChannelResponseData {
 struct GroupResponseData {
     name: String,
     avatar_url: String,
-    user_count: i32
+    user_count: i32,
 }
 
 impl Component for DirectMessages {

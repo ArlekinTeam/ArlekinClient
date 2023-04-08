@@ -1,2 +1,2 @@
-pub mod channel_message_error;
 pub mod channel;
+pub mod channel_message_error;

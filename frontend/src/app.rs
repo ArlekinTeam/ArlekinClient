@@ -43,7 +43,7 @@ impl Component for App {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let app_callback = ctx.link().callback(|m| m);
         if !self.logged_in {
-            return html! { <Login {app_callback} /> }
+            return html! { <Login {app_callback} /> };
         }
 
         let content = if self.openned_channel == 0 {

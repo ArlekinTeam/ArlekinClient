@@ -254,11 +254,13 @@ pub async fn decrypt_message(
 ) -> ChannelMessage {
     let key = match get_encryption_key(direct_channel_id, encryption_key_id).await {
         Ok(key) => key,
-        Err(err) => return ChannelMessage {
-            message_id: direct_message_id,
-            author_user_id,
-            text: Err(ChannelMessageError::Encryption(err)),
-        },
+        Err(err) => {
+            return ChannelMessage {
+                message_id: direct_message_id,
+                author_user_id,
+                text: Err(ChannelMessageError::Encryption(err)),
+            }
+        }
     };
 
     let nonce = general_purpose::STANDARD.decode(nonce).unwrap();
@@ -376,7 +378,8 @@ async fn put_middle_keys(
 }
 
 async fn get_encryption_key(
-    direct_channel_id: i64, encryption_key_id: i64
+    direct_channel_id: i64,
+    encryption_key_id: i64,
 ) -> Result<Arc<EncryptionKey>, EncryptionError> {
     loop {
         if let Some(key) = CACHED_ENCRYPTION_KEYS
@@ -436,7 +439,7 @@ async fn get_encryption_key(
                         continue;
                     }
 
-                    return Err(EncryptionError::UnableToRead)
+                    return Err(EncryptionError::UnableToRead);
                 }
 
                 todo!();

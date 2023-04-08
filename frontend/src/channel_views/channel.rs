@@ -41,7 +41,7 @@ pub fn notify_message(channel_id: i64, message: ChannelMessage) {
 
 pub struct Channel {
     channel_id: i64,
-    messages: Option<Arc<Mutex<Vec<ChannelMessage>>>>
+    messages: Option<Arc<Mutex<Vec<ChannelMessage>>>>,
 }
 
 #[derive(Properties, PartialEq, Clone)]
@@ -74,7 +74,7 @@ impl ChannelMessage {
                 html! {
                     <span class="message-error">{lang.get(err.to_translation_key())}</span>
                 }
-            },
+            }
         }
     }
 }
@@ -101,7 +101,7 @@ impl Component for Channel {
             Msg::Reload => {
                 self.load(ctx);
                 return false;
-            },
+            }
             Msg::Load(messages) => self.load_set(ctx, messages),
             Msg::ChangeChannel => self.change_channel(ctx),
             Msg::Send => self.send(ctx),

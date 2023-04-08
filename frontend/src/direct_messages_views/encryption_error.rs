@@ -1,15 +1,14 @@
-
 use std::{error::Error, fmt::Display};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum EncryptionError {
-    UnableToRead
+    UnableToRead,
 }
 
 impl EncryptionError {
     pub fn to_translation_key(&self) -> &str {
         match self {
-            EncryptionError::UnableToRead => "encryptionUnableToRead"
+            EncryptionError::UnableToRead => "encryptionUnableToRead",
         }
     }
 }
