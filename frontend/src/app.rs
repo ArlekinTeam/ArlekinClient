@@ -1,13 +1,22 @@
+use std::sync::{Arc, Mutex};
+
+use arc_cell::ArcCell;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::{
     account::{friends_views::friends::Friends, login::Login},
+    app_status_bar::AppStatusBar,
     channel_views::channel::Channel,
+    common::UnsafeSync,
     direct_messages_views::direct_messages::DirectMessages,
     localization,
     route::{self, Route},
 };
+
+lazy_static! {
+    static ref INSTANCE: ArcCell<Option<Mutex<UnsafeSync<Callback<Msg>>>>> = ArcCell::default();
+}
 
 pub struct App {
     logged_in: bool,
@@ -24,11 +33,15 @@ impl Component for App {
     type Message = Msg;
     type Properties = ();
 
-    fn create(_: &Context<Self>) -> Self {
-        Self {
+    fn create(ctx: &Context<Self>) -> Self {
+        let s = Self {
             logged_in: false,
             openned_channel: 0,
-        }
+        };
+        INSTANCE.set(Arc::new(Some(Mutex::new(
+            ctx.link().callback(|m| m).into(),
+        ))));
+        s
     }
 
     fn update(&mut self, _: &Context<Self>, msg: Self::Message) -> bool {
@@ -41,6 +54,21 @@ impl Component for App {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        html! { <>
+            <AppStatusBar />
+            {self.element_view(ctx)}
+        </> }
+    }
+}
+
+impl App {
+    pub fn logout() {
+        if let Some(instance) = INSTANCE.get().as_ref() {
+            instance.lock().unwrap().emit(Msg::Logout);
+        }
+    }
+
+    fn element_view(&self, ctx: &Context<Self>) -> Html {
         let app_callback = ctx.link().callback(|m| m);
         if !self.logged_in {
             return html! { <Login {app_callback} /> };

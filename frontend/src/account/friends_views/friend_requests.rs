@@ -152,7 +152,7 @@ impl FriendRequests {
             .body(&json!({
                 "requestedFriendUserId": requested_friend_user_id
             }))
-            .send_without_ok(self.props.app_callback.clone(), move |r| match r {
+            .send_without_ok(move |r| match r {
                 ApiResponse::Ok(_) => callback.emit(()),
                 ApiResponse::BadRequest(_) => todo!(),
             });
@@ -165,7 +165,7 @@ impl FriendRequests {
             .body(&json!({
                 "requestedFriendUserId": requested_friend_user_id
             }))
-            .send_without_ok(self.props.app_callback.clone(), move |r| match r {
+            .send_without_ok(move |r| match r {
                 ApiResponse::Ok(_) => callback.emit(()),
                 ApiResponse::BadRequest(_) => todo!(),
             });

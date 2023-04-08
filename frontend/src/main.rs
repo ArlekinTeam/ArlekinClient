@@ -1,6 +1,7 @@
 pub mod account;
 pub mod api;
 pub mod app;
+pub mod app_status_bar;
 pub mod channel_views;
 pub mod common;
 pub mod direct_messages_views;
