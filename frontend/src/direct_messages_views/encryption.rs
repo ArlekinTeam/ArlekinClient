@@ -37,7 +37,7 @@ lazy_static! {
         Mutex::new(LruCache::new(NonZeroUsize::new(512).unwrap()));
     static ref CACHED_ENCRYPTION_BLOCKS_PRIVATE: Mutex<LruCache<i64, UnsafeSync<Arc<CryptoKey>>>> =
         Mutex::new(LruCache::new(NonZeroUsize::new(100).unwrap()));
-    static ref CACHED_ENCRYPTION_KEYS: Mutex<LruCache<i64, Arc<EncryptionKey>>> =
+    static ref CACHED_ENCRYPTION_KEYS: Mutex<LruCache<(i64, i64), Arc<EncryptionKey>>> =
         Mutex::new(LruCache::new(NonZeroUsize::new(512).unwrap()));
 }
 
@@ -382,7 +382,7 @@ async fn get_encryption_key(
         if let Some(key) = CACHED_ENCRYPTION_KEYS
             .lock()
             .unwrap()
-            .get(&encryption_key_id)
+            .get(&(direct_channel_id, encryption_key_id))
         {
             return Ok(key.clone());
         }
@@ -407,7 +407,7 @@ async fn get_encryption_key(
                 let key = import_aes(&buffer).await;
 
                 CACHED_ENCRYPTION_KEYS.lock().unwrap().put(
-                    encryption_key_id,
+                    (direct_channel_id, encryption_key_id),
                     Arc::new(EncryptionKey {
                         encryption_key_id: r.encryption_key_id,
                         encryption_block_id: r.encryption_block_id,
@@ -562,7 +562,7 @@ async fn put_new_encryption_key_worker(
                 .unwrap();
 
             CACHED_ENCRYPTION_KEYS.lock().unwrap().put(
-                r.encryption_key_id,
+                (direct_channel_id, r.encryption_key_id),
                 Arc::new(EncryptionKey {
                     encryption_key_id: r.encryption_block_id,
                     encryption_block_id: r.encryption_key_id,

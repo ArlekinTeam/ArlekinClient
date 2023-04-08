@@ -54,6 +54,7 @@ pub enum Msg {
     Refresh,
     Reload,
     Load(Vec<ChannelMessage>),
+    ChangeChannel,
     Send,
 }
 
@@ -102,6 +103,7 @@ impl Component for Channel {
                 return false;
             },
             Msg::Load(messages) => self.load_set(ctx, messages),
+            Msg::ChangeChannel => self.change_channel(ctx),
             Msg::Send => self.send(ctx),
         };
         true
@@ -109,11 +111,7 @@ impl Component for Channel {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         if ctx.props().channel_id != self.channel_id {
-            OPENED_CHANNEL.set(Arc::new(Some((
-                ctx.props().channel_id,
-                ctx.link().callback(|m| m).into(),
-            ))));
-            ctx.link().callback(|_| Msg::Reload).emit(());
+            ctx.link().callback(|_| Msg::ChangeChannel).emit(());
         }
 
         let lang = localization::get_language();
@@ -177,8 +175,6 @@ impl Channel {
     }
 
     fn load_set(&mut self, ctx: &Context<Self>, messages: Vec<ChannelMessage>) {
-        self.channel_id = ctx.props().channel_id;
-
         if self.messages.is_none() {
             self.messages = Some(
                 CACHED_MESSAGES
@@ -194,6 +190,22 @@ impl Channel {
         lock.clear();
         for message in messages.iter().rev() {
             lock.push(message.clone());
+        }
+    }
+
+    fn change_channel(&mut self, ctx: &Context<Self>) {
+        self.channel_id = ctx.props().channel_id;
+        OPENED_CHANNEL.set(Arc::new(Some((
+            ctx.props().channel_id,
+            ctx.link().callback(|m| m).into(),
+        ))));
+
+        let mut lock = CACHED_MESSAGES.lock().unwrap();
+        let messages = lock.get(&ctx.props().channel_id);
+        self.messages = messages.cloned();
+
+        if messages.is_none() {
+            ctx.link().callback(|_| Msg::Reload).emit(());
         }
     }
 
