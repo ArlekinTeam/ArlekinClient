@@ -1,4 +1,4 @@
-use std::sync::{Mutex, Arc};
+use std::sync::{Arc, Mutex};
 
 use arc_cell::ArcCell;
 use yew::prelude::*;
@@ -6,15 +6,16 @@ use yew_router::prelude::*;
 
 use crate::{
     account::{friends_views::friends::Friends, login::Login},
+    app_status_bar::AppStatusBar,
     channel_views::channel::Channel,
+    common::UnsafeSync,
     direct_messages_views::direct_messages::DirectMessages,
     localization,
-    route::{self, Route}, app_status_bar::AppStatusBar, common::UnsafeSync,
+    route::{self, Route},
 };
 
 lazy_static! {
-    static ref INSTANCE: ArcCell<Option<Mutex<UnsafeSync<Callback<Msg>>>>> =
-        ArcCell::default();
+    static ref INSTANCE: ArcCell<Option<Mutex<UnsafeSync<Callback<Msg>>>>> = ArcCell::default();
 }
 
 pub struct App {
@@ -37,7 +38,9 @@ impl Component for App {
             logged_in: false,
             openned_channel: 0,
         };
-        INSTANCE.set(Arc::new(Some(Mutex::new(ctx.link().callback(|m| m).into()))));
+        INSTANCE.set(Arc::new(Some(Mutex::new(
+            ctx.link().callback(|m| m).into(),
+        ))));
         s
     }
 

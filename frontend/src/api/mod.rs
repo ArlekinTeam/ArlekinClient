@@ -7,7 +7,11 @@ use std::{collections::HashMap, sync::Arc};
 use uuid::Uuid;
 use yew::prelude::*;
 
-use crate::{app::{self, App}, common::threading, app_status_bar::AppStatusBar};
+use crate::{
+    app::{self, App},
+    app_status_bar::AppStatusBar,
+    common::threading,
+};
 
 //const DOMAIN: &str = "http://localhost:9080";
 const DOMAIN: &str = "https://test-fsqa7u.noisestudio.net";
@@ -52,7 +56,7 @@ enum ApiRequestKind {
     Get,
     Post,
     Put,
-    Delete
+    Delete,
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -93,7 +97,7 @@ impl ApiRequest {
             kind,
             endpoint: endpoint.to_owned(),
             query: None,
-            body: None
+            body: None,
         }
     }
 
@@ -133,14 +137,14 @@ impl ApiRequest {
                     AppStatusBar::set_connection(false);
                     wait_time = 3000;
                     continue;
-                },
+                }
             };
 
             match response.status() {
                 200 | 400 => {
                     AppStatusBar::set_connection(true);
                     return response;
-                },
+                }
                 401 => {
                     AppStatusBar::set_connection(true);
                     match response.json::<UnauthorizedData>().await {
@@ -152,20 +156,20 @@ impl ApiRequest {
                             false => {
                                 App::logout();
                                 panic!("Logged out.");
-                            },
+                            }
                         },
                         Err(_) => unreachable!(),
                     }
-                },
+                }
                 403 => {
                     AppStatusBar::set_connection(true);
                     panic!("Forbidden.")
-                },
+                }
                 408 | 500 | 502 | 504 => {
                     AppStatusBar::set_connection(false);
                     wait_time = 1000;
                     continue;
-                },
+                }
                 503 => {
                     AppStatusBar::set_connection(false);
                     wait_time = 5000;
@@ -226,7 +230,8 @@ impl ApiRequest {
             request = request.body(body);
         }
 
-        request.credentials(web_sys::RequestCredentials::Include)
+        request
+            .credentials(web_sys::RequestCredentials::Include)
             .header("Access-Control-Allow-Origin", DOMAIN)
             .header("Access-Control-Allow-Credentials", "true")
             .header("Content-Type", "application/json")
@@ -256,31 +261,38 @@ impl ApiRequest {
                     refresh_token: *REFRESH_TOKEN.get(),
                 })
                 .create_request_and_send_write_lock()
-                .await {
-                    Ok(r) => r,
-                    Err(_) => {
-                        AppStatusBar::set_connection(false);
-                        wait_time = 3000;
-                        continue;
-                    },
-                };
+                .await
+            {
+                Ok(r) => r,
+                Err(_) => {
+                    AppStatusBar::set_connection(false);
+                    wait_time = 3000;
+                    continue;
+                }
+            };
 
             match response.status() {
                 200 => {
                     AppStatusBar::set_connection(true);
-                    set_refresh_token(response.json::<RefreshTokenData>().await.unwrap().refresh_token);
+                    set_refresh_token(
+                        response
+                            .json::<RefreshTokenData>()
+                            .await
+                            .unwrap()
+                            .refresh_token,
+                    );
                     break;
                 }
                 400 | 401 => {
                     AppStatusBar::set_connection(true);
                     App::logout();
                     return;
-                },
+                }
                 408 | 500 | 502 | 504 => {
                     AppStatusBar::set_connection(false);
                     wait_time = 1000;
                     continue;
-                },
+                }
                 503 => {
                     AppStatusBar::set_connection(false);
                     wait_time = 5000;

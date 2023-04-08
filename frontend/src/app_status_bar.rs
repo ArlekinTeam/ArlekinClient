@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
 
 use arc_cell::ArcCell;
 use yew::prelude::*;
@@ -6,16 +9,14 @@ use yew::prelude::*;
 use crate::{common::UnsafeSync, localization};
 
 lazy_static! {
-    static ref INSTANCE: ArcCell<Option<Mutex<UnsafeSync<Callback<Msg>>>>> =
-        ArcCell::default();
+    static ref INSTANCE: ArcCell<Option<Mutex<UnsafeSync<Callback<Msg>>>>> = ArcCell::default();
     static ref IS_CONNECTED: AtomicBool = AtomicBool::new(true);
 }
 
-pub struct AppStatusBar {
-}
+pub struct AppStatusBar {}
 
 pub enum Msg {
-    UpdateConnection
+    UpdateConnection,
 }
 
 impl Component for AppStatusBar {
@@ -23,8 +24,10 @@ impl Component for AppStatusBar {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        let s = Self { };
-        INSTANCE.set(Arc::new(Some(Mutex::new(ctx.link().callback(|m| m).into()))));
+        let s = Self {};
+        INSTANCE.set(Arc::new(Some(Mutex::new(
+            ctx.link().callback(|m| m).into(),
+        ))));
         s
     }
 
@@ -34,7 +37,7 @@ impl Component for AppStatusBar {
 
     fn view(&self, _: &Context<Self>) -> Html {
         if IS_CONNECTED.load(Ordering::Relaxed) {
-            return html! {}
+            return html! {};
         }
 
         let lang = localization::get_language();

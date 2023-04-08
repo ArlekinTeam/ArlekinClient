@@ -275,7 +275,10 @@ pub async fn decrypt_message(
     }
 }
 
-pub async fn get_messages(direct_channel_id: i64, before_direct_message_id: i64) -> Vec<ChannelMessage> {
+pub async fn get_messages(
+    direct_channel_id: i64,
+    before_direct_message_id: i64,
+) -> Vec<ChannelMessage> {
     let response = api::get("channels/direct/messages")
         .query([
             ("directChannelId", direct_channel_id.to_string()),
