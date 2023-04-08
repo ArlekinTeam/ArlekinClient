@@ -58,11 +58,18 @@
     user-select: text;
 }
 
+html {
+    height: 100%;
+}
+
 body {
     background-color: var(--background);
     color: var(--text);
     font-family: 'Open Sans', sans-serif;
     line-height: 1.5em;
+    margin: 0;
+    overflow: hidden;
+    height: 100%;
 }
 
 button {

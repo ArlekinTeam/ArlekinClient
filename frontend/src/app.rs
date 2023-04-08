@@ -54,10 +54,12 @@ impl Component for App {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        html! { <>
-            <AppStatusBar />
-            {self.element_view(ctx)}
-        </> }
+        html! {
+            <div class="app-container">
+                <AppStatusBar />
+                {self.element_view(ctx)}
+            </div>
+        }
     }
 }
 

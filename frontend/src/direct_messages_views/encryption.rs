@@ -18,7 +18,7 @@ use yew::Callback;
 use crate::{
     api::{self, ApiResponse, ErrorData, ErrorDataElement, Platform},
     app,
-    channel_views::{channel::ChannelMessage, channel_message_error::ChannelMessageError},
+    channel_views::{channel_content::ChannelMessage, channel_message_error::ChannelMessageError},
     common::UnsafeSync,
     helpers::prelude::WebPage,
 };
