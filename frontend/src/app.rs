@@ -16,6 +16,7 @@ use crate::{
 
 lazy_static! {
     static ref INSTANCE: ArcCell<Option<Mutex<UnsafeSync<Callback<Msg>>>>> = ArcCell::default();
+    static ref USER_ID: ArcCell<i64> = ArcCell::default();
 }
 
 pub struct App {
@@ -24,7 +25,7 @@ pub struct App {
 }
 
 pub enum Msg {
-    Login,
+    Login(i64),
     Logout,
     OpennedChannel(i64),
 }
@@ -46,7 +47,10 @@ impl Component for App {
 
     fn update(&mut self, _: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::Login => self.logged_in = true,
+            Msg::Login(user_id) => {
+                USER_ID.set(Arc::new(user_id));
+                self.logged_in = true;
+            }
             Msg::Logout => self.logged_in = false,
             Msg::OpennedChannel(openned_channel) => self.openned_channel = openned_channel,
         };
@@ -64,6 +68,10 @@ impl Component for App {
 }
 
 impl App {
+    pub fn user_id() -> i64 {
+        *USER_ID.get()
+    }
+
     pub fn logout() {
         if let Some(instance) = INSTANCE.get().as_ref() {
             instance.lock().unwrap().emit(Msg::Logout);
@@ -89,11 +97,13 @@ impl App {
                 <link rel="stylesheet" href="/static/css/account/friends.css" />
 
                 <div class="app">
-                    <div class="app-navigator">
-                        <DirectMessages app_callback={app_callback} />
-                    </div>
-                    <div class="app-content">
-                        {content}
+                    <div class="app-inner">
+                        <div class="app-navigator">
+                            <DirectMessages app_callback={app_callback} />
+                        </div>
+                        <div class="app-content">
+                            {content}
+                        </div>
                     </div>
                 </div>
             </>

@@ -4,7 +4,10 @@ use std::{
 };
 
 use arc_cell::ArcCell;
+use gloo_timers::callback::Timeout;
 use lru::LruCache;
+use wasm_bindgen::prelude::Closure;
+use wasm_bindgen::JsCast;
 use yew::prelude::*;
 
 use crate::{
@@ -12,6 +15,7 @@ use crate::{
     app,
     common::UnsafeSync,
     direct_messages_views::encryption,
+    helpers::prelude::*,
     localization,
 };
 
@@ -20,15 +24,54 @@ use super::channel_message_error::ChannelMessageError;
 lazy_static! {
     static ref OPENED_CHANNEL: ArcCell<Option<(i64, UnsafeSync<Callback<Msg>>)>> =
         ArcCell::default();
-    static ref CACHED_MESSAGES: Mutex<LruCache<i64, Arc<Mutex<Vec<ChannelMessage>>>>> =
+    static ref CACHED_CHANNELS: Mutex<LruCache<i64, Arc<Mutex<ChannelCache>>>> =
         Mutex::new(LruCache::new(NonZeroUsize::new(64).unwrap()));
 }
 
 pub fn notify_message(channel_id: i64, message: ChannelMessage) {
-    if let Some(messages) = CACHED_MESSAGES.lock().unwrap().get(&channel_id) {
-        messages.lock().unwrap().push(message);
-    }
+    if let Some(lock) = CACHED_CHANNELS.lock().unwrap().get(&channel_id) {
+        let mut lock = lock.lock().unwrap();
+        if lock.messages.last().map(|m| m.message_id) == Some(message.message_id) {
+            return;
+        }
 
+        lock.messages.push(message);
+    }
+    refresh_channel(channel_id);
+}
+
+pub fn edit_message(channel_id: i64, message_id: i64, message: ChannelMessage) {
+    if let Some(cache) = CACHED_CHANNELS.lock().unwrap().get(&channel_id) {
+        let mut lock = cache.lock().unwrap();
+        if lock.messages.last().map(|m| m.message_id) == Some(message.message_id) {
+            if let Some(i) = lock
+                .messages
+                .iter()
+                .position(|x| x.message_id == message_id)
+            {
+                lock.messages.remove(i);
+            }
+        } else {
+            for i in 0..lock.messages.len() {
+                if lock.messages[i].message_id == message_id {
+                    lock.messages[i] = message;
+                    break;
+                }
+            }
+        }
+    }
+    refresh_channel(channel_id);
+}
+
+pub fn set_scroll(channel_id: i64, scroll: i32) {
+    if let Some(cache) = CACHED_CHANNELS.lock().unwrap().get(&channel_id) {
+        let mut lock = cache.lock().unwrap();
+        lock.scroll_y = scroll;
+    }
+    refresh_channel(channel_id);
+}
+
+fn refresh_channel(channel_id: i64) {
     let opened_channel = OPENED_CHANNEL.get();
     if let Some((id, callback)) = opened_channel.as_ref() {
         if channel_id == *id {
@@ -38,8 +81,9 @@ pub fn notify_message(channel_id: i64, message: ChannelMessage) {
 }
 
 pub struct ChannelContent {
-    channel_id: i64,
-    messages: Option<Arc<Mutex<Vec<ChannelMessage>>>>,
+    cache: Option<Arc<Mutex<ChannelCache>>>,
+    scroll_event: Closure<dyn FnMut()>,
+    latest_before: i64,
 }
 
 #[derive(Properties, PartialEq, Clone)]
@@ -53,6 +97,8 @@ pub enum Msg {
     Reload,
     Load(Vec<ChannelMessage>),
     ChangeChannel,
+    SetScroll(i32),
+    LoadUp,
 }
 
 #[derive(Clone, PartialEq)]
@@ -62,10 +108,21 @@ pub struct ChannelMessage {
     pub text: Result<Arc<String>, ChannelMessageError>,
 }
 
+struct ChannelCache {
+    messages: Vec<ChannelMessage>,
+    is_scrolled_to_top: bool,
+    scroll_y: i32,
+}
+
 impl ChannelMessage {
     fn text_into_html(&self) -> Html {
         match self.text.clone() {
-            Ok(text) => html! { text },
+            Ok(text) => match self.message_id > 0 {
+                true => html! { text },
+                false => html! {
+                    <span class="message-sent">{text}</span>
+                },
+            },
             Err(err) => {
                 let lang = localization::get_language();
                 html! {
@@ -81,9 +138,20 @@ impl Component for ChannelContent {
     type Properties = Props;
 
     fn create(ctx: &Context<Self>) -> Self {
+        let callback = ctx.link().callback(|m| m);
+        let scroll_event = Closure::new(move || {
+            let scroll = Element::by_id("channel-content-scroll");
+            callback.emit(Msg::SetScroll(scroll.scroll_height() - scroll.scroll_top()));
+
+            if scroll.scroll_top() < 500 {
+                callback.emit(Msg::LoadUp);
+            }
+        });
+
         let mut s = Self {
-            channel_id: 0,
-            messages: None,
+            cache: None,
+            scroll_event,
+            latest_before: 0,
         };
         s.change_channel(ctx);
         s
@@ -93,30 +161,43 @@ impl Component for ChannelContent {
         match msg {
             Msg::Refresh => (),
             Msg::Reload => {
-                self.load(ctx);
+                self.load(ctx, 0);
                 return false;
             }
             Msg::Load(messages) => self.load_set(ctx, messages),
             Msg::ChangeChannel => self.change_channel(ctx),
+            Msg::SetScroll(scroll) => self.set_scroll(scroll),
+            Msg::LoadUp => {
+                self.load_up(ctx);
+                return false;
+            }
         };
         true
     }
 
-    fn view(&self, ctx: &Context<Self>) -> Html {
-        if ctx.props().channel_id != self.channel_id {
+    fn changed(&mut self, ctx: &Context<Self>, old_props: &Self::Properties) -> bool {
+        if ctx.props().channel_id != old_props.channel_id {
             ctx.link().callback(|_| Msg::ChangeChannel).emit(());
         }
+        false
+    }
 
-        let content = match &self.messages {
+    fn view(&self, ctx: &Context<Self>) -> Html {
+        let content = match &self.cache {
             Some(arc) => {
-                let messages = arc.lock().unwrap();
+                let cache = arc.lock().unwrap();
+                let mut vec = Vec::with_capacity(cache.messages.len() + 1);
 
-                let mut vec = Vec::with_capacity(messages.len());
+                if cache.is_scrolled_to_top {
+                    vec.push(html! {
+                        <h2>{"This is the beginning of the chat"}</h2>
+                    });
+                }
 
                 let mut last_author = 0;
                 let mut count = 0;
 
-                for message in messages.iter() {
+                for message in cache.messages.iter() {
                     vec.push(if last_author == message.author_user_id && count < 10 {
                         count += 1;
                         html! {
@@ -144,57 +225,111 @@ impl Component for ChannelContent {
         };
 
         html! {
-            <div class="channel-content">
+            <div class="channel-content" id="channel-content-scroll">
                 <div class="channel-content-inner">
                     {content}
                 </div>
             </div>
         }
     }
+
+    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+        let scroll = Element::by_id("channel-content-scroll");
+        scroll
+            .add_event_listener_with_callback("scroll", self.scroll_event.as_ref().unchecked_ref())
+            .unwrap();
+
+        if let Some(cache) = &self.cache {
+            let lock = cache.lock().unwrap();
+            scroll.set_scroll_top(scroll.scroll_height() - lock.scroll_y);
+        }
+    }
 }
 
 impl ChannelContent {
-    fn load(&self, ctx: &Context<Self>) {
+    fn load(&self, ctx: &Context<Self>, before: i64) {
         let callback = ctx.link().callback(Msg::Load);
         let channel_id = ctx.props().channel_id;
 
-        wasm_bindgen_futures::spawn_local(async move {
-            callback.emit(encryption::get_messages(channel_id, 0).await);
-        });
+        Timeout::new(0, move || {
+            wasm_bindgen_futures::spawn_local(async move {
+                callback.emit(encryption::get_messages(channel_id, before).await);
+            });
+        })
+        .forget();
     }
 
     fn load_set(&mut self, ctx: &Context<Self>, messages: Vec<ChannelMessage>) {
-        if self.messages.is_none() {
-            self.messages = Some(
-                CACHED_MESSAGES
+        if self.cache.is_none() {
+            self.cache = Some(
+                CACHED_CHANNELS
                     .lock()
                     .unwrap()
-                    .get_or_insert(ctx.props().channel_id, || Arc::new(Mutex::new(Vec::new())))
+                    .get_or_insert(ctx.props().channel_id, || {
+                        Arc::new(Mutex::new(ChannelCache {
+                            messages: Vec::new(),
+                            is_scrolled_to_top: false,
+                            scroll_y: 0,
+                        }))
+                    })
                     .clone(),
             );
         }
-        let destination = self.messages.as_ref().unwrap();
-
+        let destination = self.cache.as_ref().unwrap();
         let mut lock = destination.lock().unwrap();
-        lock.clear();
-        for message in messages.iter().rev() {
-            lock.push(message.clone());
+
+        if messages.len() < 50 {
+            lock.is_scrolled_to_top = true;
+        }
+
+        for message in messages {
+            lock.messages.insert(0, message.clone());
+        }
+    }
+
+    fn load_up(&mut self, ctx: &Context<Self>) {
+        if let Some(cache) = &self.cache {
+            if cache.lock().unwrap().is_scrolled_to_top {
+                return;
+            }
+        }
+
+        let before = match self.cache.as_ref() {
+            Some(arc) => {
+                let cache = arc.lock().unwrap();
+                if cache.messages.is_empty() {
+                    return;
+                }
+                cache.messages[0].message_id
+            }
+            None => return,
+        };
+
+        if before != self.latest_before {
+            self.latest_before = before;
+            self.load(ctx, before);
         }
     }
 
     fn change_channel(&mut self, ctx: &Context<Self>) {
-        self.channel_id = ctx.props().channel_id;
         OPENED_CHANNEL.set(Arc::new(Some((
             ctx.props().channel_id,
             ctx.link().callback(|m| m).into(),
         ))));
 
-        let mut lock = CACHED_MESSAGES.lock().unwrap();
+        let mut lock = CACHED_CHANNELS.lock().unwrap();
         let messages = lock.get(&ctx.props().channel_id);
-        self.messages = messages.cloned();
+        self.cache = messages.cloned();
 
         if messages.is_none() {
-            self.load(ctx);
+            self.load(ctx, 0);
+        }
+    }
+
+    fn set_scroll(&self, scroll: i32) {
+        if let Some(cache) = &self.cache {
+            let mut lock = cache.lock().unwrap();
+            lock.scroll_y = scroll;
         }
     }
 }

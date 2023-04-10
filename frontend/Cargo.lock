@@ -47,6 +47,7 @@ dependencies = [
  "const_format",
  "getrandom",
  "gloo-net",
+ "gloo-timers",
  "js-sys",
  "lazy_static",
  "log",
