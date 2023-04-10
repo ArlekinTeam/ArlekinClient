@@ -1,7 +1,10 @@
+use std::sync::Arc;
+
+use gloo_timers::callback::Timeout;
 use yew::prelude::*;
 
 use crate::{
-    app,
+    app::{self, App},
     channel_views::channel_content::ChannelContent,
     direct_messages_views::encryption,
     helpers::prelude::*,
@@ -9,7 +12,11 @@ use crate::{
     route::{self, Route},
 };
 
-pub struct Channel {}
+use super::channel_content::{self, ChannelMessage};
+
+pub struct Channel {
+    sent_message_id: i64,
+}
 
 #[derive(Properties, PartialEq, Clone)]
 pub struct Props {
@@ -28,7 +35,7 @@ impl Component for Channel {
     type Properties = Props;
 
     fn create(_: &Context<Self>) -> Self {
-        Self {}
+        Self { sent_message_id: 0 }
     }
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
@@ -62,13 +69,41 @@ impl Component for Channel {
 }
 
 impl Channel {
-    fn send(&self, ctx: &Context<Self>) {
+    fn send(&mut self, ctx: &Context<Self>) {
         let input = Input::by_id("message");
-        encryption::send_message(
-            ctx.props().app_callback.clone(),
-            ctx.props().channel_id,
-            input.value(),
+        let value = input.value();
+
+        let channel_id = ctx.props().channel_id;
+        self.sent_message_id -= 1;
+        let sent_message_id = self.sent_message_id;
+
+        channel_content::notify_message(
+            channel_id,
+            ChannelMessage {
+                message_id: sent_message_id,
+                author_user_id: App::user_id(),
+                text: Ok(Arc::new(input.value())),
+            },
         );
+
+        Timeout::new(0, move || {
+            wasm_bindgen_futures::spawn_local(async move {
+                let message_id = encryption::send_message(channel_id, value.clone()).await;
+
+                channel_content::edit_message(
+                    channel_id,
+                    sent_message_id,
+                    ChannelMessage {
+                        message_id,
+                        author_user_id: App::user_id(),
+                        text: Ok(Arc::new(value)),
+                    },
+                );
+            });
+        })
+        .forget();
+
+        channel_content::set_scroll(channel_id, 0);
 
         input.set_value("");
     }

@@ -32,6 +32,7 @@ pub struct Props {
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct LoginResponseData {
+    user_id: i64,
     refresh_token: Uuid,
     message_encryption_salt: i64,
 }
@@ -144,7 +145,7 @@ impl Login {
                             // TODO: remove this. Move to app.
                             notifier::connect(b);
                         });
-                        app_callback.emit(app::Msg::Login);
+                        app_callback.emit(app::Msg::Login(r.user_id));
                     }
                     ApiResponse::BadRequest(err) => {
                         status.emit(Status::with_err(err));

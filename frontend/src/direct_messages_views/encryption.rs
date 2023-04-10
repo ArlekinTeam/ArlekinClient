@@ -16,7 +16,7 @@ use web_sys::{CryptoKey, CryptoKeyPair};
 use yew::Callback;
 
 use crate::{
-    api::{self, ApiResponse, ErrorData, ErrorDataElement, Platform},
+    api::{self, ErrorData, ErrorDataElement, Platform},
     app,
     channel_views::{channel_content::ChannelMessage, channel_message_error::ChannelMessageError},
     common::UnsafeSync,
@@ -314,34 +314,38 @@ pub async fn get_messages(
     result
 }
 
-pub fn send_message(app_callback: Callback<app::Msg>, direct_channel_id: i64, content: String) {
-    wasm_bindgen_futures::spawn_local(async move {
-        // Zero for newest.
-        let key = get_encryption_key(direct_channel_id, 0).await.unwrap();
+pub async fn send_message(direct_channel_id: i64, content: String) -> i64 {
+    // Zero for newest.
+    let key = get_encryption_key(direct_channel_id, 0).await.unwrap();
 
-        let mut nonce: [u8; 16] = Default::default();
-        WebPage::crypto()
-            .get_random_values_with_u8_array(&mut nonce)
-            .unwrap();
+    let mut nonce: [u8; 16] = Default::default();
+    WebPage::crypto()
+        .get_random_values_with_u8_array(&mut nonce)
+        .unwrap();
 
-        let mut buffer = content.as_bytes().to_vec();
-        encrypt_aes(&key.key, &nonce, &mut buffer).await;
+    let mut buffer = content.as_bytes().to_vec();
+    encrypt_aes(&key.key, &nonce, &mut buffer).await;
 
-        api::put("channels/direct/messages")
-            .body(&json!({
-                "directChannelId": direct_channel_id,
-                "encryptionKeyId": key.encryption_key_id,
-                "nonce": general_purpose::STANDARD.encode(nonce),
-                "encryptedText": general_purpose::STANDARD.encode(buffer)
-            }))
-            .send(
-                app_callback,
-                move |r: ApiResponse<MessagesPutResponseData>| match r {
-                    ApiResponse::Ok(_) => (),
-                    ApiResponse::BadRequest(_) => todo!(),
-                },
-            );
-    });
+    let response = api::put("channels/direct/messages")
+        .body(&json!({
+            "directChannelId": direct_channel_id,
+            "encryptionKeyId": key.encryption_key_id,
+            "nonce": general_purpose::STANDARD.encode(nonce),
+            "encryptedText": general_purpose::STANDARD.encode(buffer)
+        }))
+        .send_async()
+        .await;
+    match response.status() {
+        200 => {
+            let r = response.json::<MessagesPutResponseData>().await.unwrap();
+
+            r.direct_message_id
+        }
+        400 => {
+            todo!();
+        }
+        _ => unreachable!(),
+    }
 }
 
 async fn put_middle_keys(encryption_block_hash: &[u8]) -> GetMiddleKeysResponseData {

@@ -57,3 +57,7 @@
     color: red;
     font-style: italic;
 }
+
+.channel-message .message-sent {
+    color: gray;
+}

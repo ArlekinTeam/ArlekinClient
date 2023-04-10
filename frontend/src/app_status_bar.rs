@@ -41,9 +41,11 @@ impl Component for AppStatusBar {
         }
 
         let lang = localization::get_language();
-        html! { <div>
-            <p>{lang.get("viewAppStatusBarDisconnected")}</p>
-        </div> }
+        html! {
+            <div>
+                <p>{lang.get("viewAppStatusBarDisconnected")}</p>
+            </div>
+        }
     }
 }
 
