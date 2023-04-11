@@ -11,6 +11,8 @@ pub enum Route {
     Login,
     #[at("/friends")]
     Friends,
+    #[at("/settings")]
+    Settings,
     #[at("/direct/:id")]
     Direct { id: i64 },
 }

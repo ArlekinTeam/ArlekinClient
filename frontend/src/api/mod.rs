@@ -10,7 +10,7 @@ use yew::prelude::*;
 use crate::{
     app::{self, App},
     app_status_bar::AppStatusBar,
-    common::threading,
+    common::threading, helpers::prelude::*,
 };
 
 //const DOMAIN: &str = "http://localhost:9080";
@@ -87,8 +87,22 @@ pub fn delete(endpoint: &str) -> ApiRequest {
     ApiRequest::new(ApiRequestKind::Delete, endpoint)
 }
 
+pub fn try_load() -> bool {
+    let value = WebPage::local_storage().get_item("refresh_token")
+        .expect("Unable to get refresh_token from session storage.");
+    if let Some(refresh_token) = value {
+        REFRESH_TOKEN.set(Arc::new(Uuid::parse_str(&refresh_token).unwrap()));
+        true
+    } else {
+        false
+    }
+}
+
 pub fn set_refresh_token(refresh_token: Uuid) {
     REFRESH_TOKEN.set(Arc::new(refresh_token));
+
+    WebPage::local_storage().set_item("refresh_token", &refresh_token.to_string())
+        .expect("Unable to set refresh_token to session storage.");
 }
 
 impl ApiRequest {
@@ -154,7 +168,7 @@ impl ApiRequest {
                                 continue;
                             }
                             false => {
-                                App::logout();
+                                App::logout_without_api();
                                 panic!("Logged out.");
                             }
                         },
@@ -285,7 +299,7 @@ impl ApiRequest {
                 }
                 400 | 401 => {
                     AppStatusBar::set_connection(true);
-                    App::logout();
+                    App::logout_without_api();
                     return;
                 }
                 408 | 500 | 502 | 504 => {

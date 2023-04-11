@@ -11,7 +11,6 @@ use yew::Callback;
 
 use crate::{
     api::{self, ApiResponse},
-    app,
     common::UnsafeSync,
     direct_messages_views,
     helpers::prelude::*,
@@ -22,7 +21,6 @@ lazy_static! {
 }
 
 struct WebSocket {
-    _app_callback: UnsafeSync<Callback<app::Msg>>,
     client: UnsafeSync<Arc<RefCell<wasm_sockets::PollingClient>>>,
 }
 
@@ -33,14 +31,13 @@ struct GetWsResponseData {
     address: String,
 }
 
-pub fn connect(app_callback: Callback<app::Msg>) {
-    let a = app_callback.clone();
+pub fn connect() {
     let cb: Closure<dyn FnMut()> = Closure::new(move || {
         if let Some(ws) = WEB_SOCKET.get().as_ref() {
             let borrowed = ws.client.borrow();
             borrowed.send_string(";").unwrap();
         } else {
-            reconnect(a.clone());
+            reconnect();
         }
     });
     WebPage::window()
@@ -48,33 +45,29 @@ pub fn connect(app_callback: Callback<app::Msg>) {
         .unwrap();
     cb.forget();
 
-    reconnect(app_callback);
+    reconnect();
 }
 
-fn reconnect(app_callback: Callback<app::Msg>) {
+fn reconnect() {
     WEB_SOCKET.set(Arc::new(None));
     api::get("accounts/getws").send(
-        app_callback.clone(),
+        Callback::noop(),
         move |r: ApiResponse<GetWsResponseData>| match r {
             ApiResponse::Ok(r) => {
-                connect_worker(app_callback, r).unwrap();
+                connect_worker(r).unwrap();
             }
             ApiResponse::BadRequest(_) => todo!(),
         },
     );
 }
 
-fn connect_worker(
-    app_callback: Callback<app::Msg>,
-    data: GetWsResponseData,
-) -> Result<(), WebSocketError> {
+fn connect_worker(data: GetWsResponseData) -> Result<(), WebSocketError> {
     let client = Arc::new(RefCell::new(wasm_sockets::PollingClient::new(&format!(
         "{}/api/v1/notifier/ws?token={}",
         data.address, data.token
     ))?));
 
     let clone = client.clone();
-    let a = app_callback.clone();
     client
         .borrow_mut()
         .event_client
@@ -82,7 +75,6 @@ fn connect_worker(
             move |_client: &wasm_sockets::EventClient| {
                 log::info!("Connection successfully created");
                 WEB_SOCKET.set(Arc::new(Some(WebSocket {
-                    _app_callback: a.clone().into(),
                     client: clone.clone().into(),
                 })));
             },
@@ -99,7 +91,7 @@ fn connect_worker(
         .event_client
         .set_on_close(Some(Box::new(move |_evt| {
             log::info!("Connection closed");
-            reconnect(app_callback.clone());
+            reconnect();
         })));
     client
         .borrow_mut()

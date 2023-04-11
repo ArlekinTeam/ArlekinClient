@@ -10,7 +10,7 @@ use crate::{
     app,
     direct_messages_views::encryption,
     helpers::prelude::*,
-    localization, notifier,
+    localization,
     route::{Route, Router},
 };
 
@@ -134,16 +134,13 @@ impl Login {
                         )
                         .unwrap();
 
-                        let b = app_callback.clone();
+                        api::set_refresh_token(r.refresh_token);
                         wasm_bindgen_futures::spawn_local(async move {
                             let a = message_encryption_hash;
-                            encryption::init(b.clone(), &a).await;
+                            encryption::init(&a).await;
 
                             // TODO: remove this. Move to registration.
                             encryption::put_new_encryption_block(0).await;
-
-                            // TODO: remove this. Move to app.
-                            notifier::connect(b);
                         });
                         app_callback.emit(app::Msg::Login(r.user_id));
                     }

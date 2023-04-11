@@ -76,7 +76,6 @@ impl Component for FriendRequests {
                             <div class="friends-profile-container">
                                 <LoadUser<()>
                                     props={()}
-                                    app_callback={self.props.app_callback.clone()}
                                     user_id={user_id}
                                     view={Callback::from(process_user_view)}
                                 />
@@ -102,7 +101,6 @@ impl Component for FriendRequests {
                             <div class="user-profile-container friends-profile-container">
                                 <LoadUser<()>
                                     props={()}
-                                    app_callback={self.props.app_callback.clone()}
                                     user_id={user_id}
                                     view={Callback::from(process_user_view)}
                                 />

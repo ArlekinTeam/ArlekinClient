@@ -1,4 +1,4 @@
-use web_sys::{Crypto, Document, Window};
+use web_sys::{Crypto, Document, Window, Storage};
 
 pub struct WebPage {}
 
@@ -18,5 +18,10 @@ impl WebPage {
         Self::window()
             .crypto()
             .expect("Web browser does not support crypto.")
+    }
+
+    #[inline]
+    pub fn local_storage() -> Storage {
+        Self::window().local_storage().unwrap().unwrap()
     }
 }

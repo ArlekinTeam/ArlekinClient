@@ -85,7 +85,6 @@ impl Component for DirectMessages {
                         >
                             <LoadUser<()>
                                 props={()}
-                                app_callback={self.props.app_callback.clone()}
                                 user_id={data.user_id}
                                 view={Callback::from(process_user_channel_view)}
                             />
@@ -99,13 +98,11 @@ impl Component for DirectMessages {
         };
 
         let a = self.props.app_callback.clone();
-        html! {
-            <div>
-                <p onclick={Callback::from(move |_| a.emit(app::Msg::OpennedChannel(0)))}>{"Friends"}</p>
+        html! { <>
+            <p onclick={Callback::from(move |_| a.emit(app::Msg::OpennedChannel(0)))}>{"Friends"}</p>
 
-                {data}
-            </div>
-        }
+            {data}
+        </> }
     }
 }
 
@@ -136,7 +133,7 @@ fn process_channel_view(name: &str, avatar_url: &str) -> Html {
     html! {
         <div class="user-profile">
             <img class="user-avatar noselect" src={avatar_url.to_owned()} alt={"avatar"} />
-            <span class="friends-name">{name.to_owned()}</span>
+            <span class="user-name">{name.to_owned()}</span>
         </div>
     }
 }

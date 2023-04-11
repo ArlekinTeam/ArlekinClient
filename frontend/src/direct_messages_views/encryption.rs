@@ -13,11 +13,9 @@ use serde_json::json;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{CryptoKey, CryptoKeyPair};
-use yew::Callback;
 
 use crate::{
     api::{self, ErrorData, ErrorDataElement, Platform},
-    app,
     channel_views::{channel_content::ChannelMessage, channel_message_error::ChannelMessageError},
     common::UnsafeSync,
     helpers::prelude::WebPage,
@@ -132,7 +130,34 @@ struct MessagesGetResultData {
     messages: Vec<MessagesGetElementResultData>,
 }
 
-pub async fn init(_app_callback: Callback<app::Msg>, encryption_block_hash: &[u8]) {
+pub fn try_load() -> bool {
+    let encryption_block_hash = WebPage::local_storage()
+        .get_item("encryption_block_hash")
+        .expect("Unable to get encryption_block_hash from session storage.");
+    if let Some(encryption_block_hash) = encryption_block_hash {
+        let encryption_block_hash = general_purpose::STANDARD
+            .decode(encryption_block_hash)
+            .unwrap();
+
+        wasm_bindgen_futures::spawn_local(async move {
+            init_worker(&encryption_block_hash).await;
+        });
+
+        true
+    } else {
+        false
+    }
+}
+
+pub async fn init(encryption_block_hash: &[u8]) {
+    WebPage::local_storage().set_item(
+        "encryption_block_hash", &general_purpose::STANDARD.encode(encryption_block_hash)
+    ).expect("Unable to set encryption_block_hash in session storage.");
+
+    init_worker(encryption_block_hash).await;
+}
+
+pub async fn init_worker(encryption_block_hash: &[u8]) {
     let response = api::post("channels/direct/encryption/getmiddlekeys")
         .send_async()
         .await;
