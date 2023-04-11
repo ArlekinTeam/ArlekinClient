@@ -77,7 +77,6 @@ impl Component for FriendsList {
                         <div class="user-profile-container friends-profile-container">
                             <LoadUser<()>
                                 props={()}
-                                app_callback={self.props.app_callback.clone()}
                                 user_id={user_id}
                                 view={Callback::from(process_user_view)}
                             />
@@ -105,7 +104,6 @@ impl FriendsList {
         let callback = ctx.link().callback(Msg::Load);
 
         api::get("accounts/friends").send(
-            self.props.app_callback.clone(),
             move |r: ApiResponse<FriendsListLoadResponseData>| match r {
                 ApiResponse::Ok(r) => callback.emit(r),
                 ApiResponse::BadRequest(_) => todo!(),
@@ -119,7 +117,6 @@ impl FriendsList {
         api::post("channels/direct/getchannelidfromuserid")
             .body(&json!({ "userId": friend_user_id }))
             .send(
-                self.props.app_callback.clone(),
                 move |r: ApiResponse<GetChannelIdFromUserIdResponseData>| match r {
                     ApiResponse::Ok(r) => callback.emit(app::Msg::OpennedChannel(r.channel_id)),
                     ApiResponse::BadRequest(_) => todo!(),
@@ -137,7 +134,7 @@ fn process_user_view(ctx: LoadUserContext<()>) -> Html {
     html! {
         <div class="user-profile">
             <img class="user-avatar" src={user.avatar_url.clone()} alt={"avatar"} />
-            <div class="select">
+            <div class="select user-content">
                 <label class="user-name">{user.name.clone()}</label>
                 <br/>
                 <span class="user-info">{"@"}{user.username.clone()}</span>

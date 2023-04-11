@@ -4,19 +4,12 @@ use yew::prelude::*;
 
 use crate::{
     api::{self, ApiResponse, Platform},
-    app,
     helpers::prelude::*,
     localization,
 };
 
 pub struct AddFriend {
-    props: Props,
     status: Html,
-}
-
-#[derive(Properties, PartialEq, Clone)]
-pub struct Props {
-    pub app_callback: Callback<app::Msg>,
 }
 
 pub enum Msg {
@@ -32,11 +25,10 @@ pub struct FriendRequestsSendResponseData {
 
 impl Component for AddFriend {
     type Message = Msg;
-    type Properties = Props;
+    type Properties = ();
 
-    fn create(ctx: &Context<Self>) -> Self {
+    fn create(_: &Context<Self>) -> Self {
         Self {
-            props: ctx.props().clone(),
             status: Default::default(),
         }
     }
@@ -79,7 +71,6 @@ impl AddFriend {
                 "userIdentifier": username
             }))
             .send(
-                self.props.app_callback.clone(),
                 move |r: ApiResponse<FriendRequestsSendResponseData>| match r {
                     ApiResponse::Ok(_) => {
                         status.emit(Status::with_ok("viewAccountFriendRequestsSentSuccess"));

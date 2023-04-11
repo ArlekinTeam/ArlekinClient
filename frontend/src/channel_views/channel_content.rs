@@ -12,7 +12,6 @@ use yew::prelude::*;
 
 use crate::{
     account::load_user::{LoadUser, LoadUserContext},
-    app,
     common::UnsafeSync,
     direct_messages_views::encryption,
     helpers::prelude::*,
@@ -88,7 +87,6 @@ pub struct ChannelContent {
 
 #[derive(Properties, PartialEq, Clone)]
 pub struct Props {
-    pub app_callback: Callback<app::Msg>,
     pub channel_id: i64,
 }
 
@@ -182,7 +180,7 @@ impl Component for ChannelContent {
         false
     }
 
-    fn view(&self, ctx: &Context<Self>) -> Html {
+    fn view(&self, _: &Context<Self>) -> Html {
         let content = match &self.cache {
             Some(arc) => {
                 let cache = arc.lock().unwrap();
@@ -211,7 +209,6 @@ impl Component for ChannelContent {
                         html! {
                             <LoadUser<ChannelMessage>
                                 props={message.clone()}
-                                app_callback={ctx.props().app_callback.clone()}
                                 user_id={message.author_user_id}
                                 view={Callback::from(process_message_view)}
                             />
