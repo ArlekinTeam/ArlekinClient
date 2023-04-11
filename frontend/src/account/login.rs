@@ -110,7 +110,6 @@ impl Login {
                 "passwordHash": general_purpose::STANDARD.encode(password_hash)
             }))
             .send(
-                app_callback.clone(),
                 move |r: ApiResponse<LoginResponseData>| match r {
                     ApiResponse::Ok(r) => {
                         let mut message_encryption_hash = [0u8; 128];

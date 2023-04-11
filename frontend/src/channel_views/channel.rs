@@ -4,7 +4,7 @@ use gloo_timers::callback::Timeout;
 use yew::prelude::*;
 
 use crate::{
-    app::{self, App},
+    app::App,
     channel_views::channel_content::ChannelContent,
     direct_messages_views::encryption,
     helpers::prelude::*,
@@ -20,7 +20,6 @@ pub struct Channel {
 
 #[derive(Properties, PartialEq, Clone)]
 pub struct Props {
-    pub app_callback: Callback<app::Msg>,
     pub channel_id: i64,
 }
 
@@ -57,7 +56,7 @@ impl Component for Channel {
                     <h2>{"Channel name"}</h2>
                 </div>
 
-                <ChannelContent app_callback={ctx.props().app_callback.clone()} channel_id={ctx.props().channel_id} />
+                <ChannelContent channel_id={ctx.props().channel_id} />
 
                 <div class="channel-send-button-container">
                     <input type="text" name="message" id="message" />

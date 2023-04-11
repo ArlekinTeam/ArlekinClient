@@ -104,7 +104,6 @@ impl FriendsList {
         let callback = ctx.link().callback(Msg::Load);
 
         api::get("accounts/friends").send(
-            self.props.app_callback.clone(),
             move |r: ApiResponse<FriendsListLoadResponseData>| match r {
                 ApiResponse::Ok(r) => callback.emit(r),
                 ApiResponse::BadRequest(_) => todo!(),
@@ -118,7 +117,6 @@ impl FriendsList {
         api::post("channels/direct/getchannelidfromuserid")
             .body(&json!({ "userId": friend_user_id }))
             .send(
-                self.props.app_callback.clone(),
                 move |r: ApiResponse<GetChannelIdFromUserIdResponseData>| match r {
                     ApiResponse::Ok(r) => callback.emit(app::Msg::OpennedChannel(r.channel_id)),
                     ApiResponse::BadRequest(_) => todo!(),

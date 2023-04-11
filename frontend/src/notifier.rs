@@ -7,7 +7,6 @@ use uuid::Uuid;
 use wasm_bindgen::prelude::Closure;
 use wasm_bindgen::JsCast;
 use wasm_sockets::WebSocketError;
-use yew::Callback;
 
 use crate::{
     api::{self, ApiResponse},
@@ -51,7 +50,6 @@ pub fn connect() {
 fn reconnect() {
     WEB_SOCKET.set(Arc::new(None));
     api::get("accounts/getws").send(
-        Callback::noop(),
         move |r: ApiResponse<GetWsResponseData>| match r {
             ApiResponse::Ok(r) => {
                 connect_worker(r).unwrap();

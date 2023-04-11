@@ -5,17 +5,11 @@ use yew::prelude::*;
 use crate::{
     account::load_user::{LoadUser, LoadUserContext},
     api::{self, ApiResponse},
-    app, localization,
+    localization,
 };
 
 pub struct FriendRequests {
-    props: Props,
     data: Option<FriendRequestsLoadResponseData>,
-}
-
-#[derive(Properties, PartialEq, Clone)]
-pub struct Props {
-    pub app_callback: Callback<app::Msg>,
 }
 
 pub enum Msg {
@@ -34,11 +28,10 @@ pub struct FriendRequestsLoadResponseData {
 
 impl Component for FriendRequests {
     type Message = Msg;
-    type Properties = Props;
+    type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
         let s = Self {
-            props: ctx.props().clone(),
             data: None,
         };
         s.load(ctx);
@@ -135,7 +128,6 @@ impl FriendRequests {
         let callback = ctx.link().callback(Msg::Load);
 
         api::get("accounts/friendrequests").send(
-            self.props.app_callback.clone(),
             move |r: ApiResponse<FriendRequestsLoadResponseData>| match r {
                 ApiResponse::Ok(r) => callback.emit(r),
                 ApiResponse::BadRequest(_) => todo!(),

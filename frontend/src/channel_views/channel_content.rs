@@ -12,7 +12,6 @@ use yew::prelude::*;
 
 use crate::{
     account::load_user::{LoadUser, LoadUserContext},
-    app,
     common::UnsafeSync,
     direct_messages_views::encryption,
     helpers::prelude::*,
@@ -88,7 +87,6 @@ pub struct ChannelContent {
 
 #[derive(Properties, PartialEq, Clone)]
 pub struct Props {
-    pub app_callback: Callback<app::Msg>,
     pub channel_id: i64,
 }
 

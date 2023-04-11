@@ -5,10 +5,9 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::{collections::HashMap, sync::Arc};
 use uuid::Uuid;
-use yew::prelude::*;
 
 use crate::{
-    app::{self, App},
+    app::App,
     app_status_bar::AppStatusBar,
     common::threading, helpers::prelude::*,
 };
@@ -194,7 +193,7 @@ impl ApiRequest {
         }
     }
 
-    pub fn send<F, T>(self, _app_callback: Callback<app::Msg>, callback: F)
+    pub fn send<F, T>(self, callback: F)
     where
         F: FnOnce(ApiResponse<T>) + 'static,
         T: DeserializeOwned,

@@ -111,7 +111,6 @@ impl DirectMessages {
         let callback = ctx.link().callback(Msg::Load);
 
         api::get("channels/direct/todo2").send(
-            self.props.app_callback.clone(),
             move |r: ApiResponse<DirectMessagesLoadResponseData>| match r {
                 ApiResponse::Ok(r) => callback.emit(r),
                 ApiResponse::BadRequest(_) => todo!(),

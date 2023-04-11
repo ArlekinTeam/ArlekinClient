@@ -152,7 +152,7 @@ impl App {
         let content = if self.openned_channel == 0 {
             html! { <Friends app_callback={app_callback.clone()} /> }
         } else {
-            html! { <Channel app_callback={app_callback.clone()} channel_id={self.openned_channel} /> }
+            html! { <Channel channel_id={self.openned_channel} /> }
         };
 
         html! {
@@ -200,15 +200,3 @@ pub fn app_loader() -> HtmlResult {
         </BrowserRouter>
     })
 }
-
-/*fn app_loader_async() -> SuspensionResult<()> {
-    let suspension = Suspension::from_future(async {
-        localization::get_language_async().await;
-    });
-
-    if suspension.resumed() {
-        Ok(())
-    } else {
-        Err(suspension)
-    }
-}*/
