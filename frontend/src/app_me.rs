@@ -1,7 +1,10 @@
 use yew::prelude::*;
 use yew_icons::{Icon, IconId};
 
-use crate::{account::load_user::{LoadUser, LoadUserContext}, app::App};
+use crate::{
+    account::load_user::{LoadUser, LoadUserContext},
+    app::App,
+};
 
 #[function_component(AppMe)]
 pub fn app_me() -> Html {

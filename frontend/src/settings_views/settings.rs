@@ -1,7 +1,11 @@
 use yew::prelude::*;
 use yew_icons::{Icon, IconId};
 
-use crate::{route::{Route, self}, app::App, localization};
+use crate::{
+    app::App,
+    localization,
+    route::{self, Route},
+};
 
 #[function_component(Settings)]
 pub fn settings() -> Html {

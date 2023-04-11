@@ -6,11 +6,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::{collections::HashMap, sync::Arc};
 use uuid::Uuid;
 
-use crate::{
-    app::App,
-    app_status_bar::AppStatusBar,
-    common::threading, helpers::prelude::*,
-};
+use crate::{app::App, app_status_bar::AppStatusBar, common::threading, helpers::prelude::*};
 
 //const DOMAIN: &str = "http://localhost:9080";
 const DOMAIN: &str = "https://test-fsqa7u.noisestudio.net";
@@ -87,7 +83,8 @@ pub fn delete(endpoint: &str) -> ApiRequest {
 }
 
 pub fn try_load() -> bool {
-    let value = WebPage::local_storage().get_item("refresh_token")
+    let value = WebPage::local_storage()
+        .get_item("refresh_token")
         .expect("Unable to get refresh_token from session storage.");
     if let Some(refresh_token) = value {
         REFRESH_TOKEN.set(Arc::new(Uuid::parse_str(&refresh_token).unwrap()));
@@ -100,7 +97,8 @@ pub fn try_load() -> bool {
 pub fn set_refresh_token(refresh_token: Uuid) {
     REFRESH_TOKEN.set(Arc::new(refresh_token));
 
-    WebPage::local_storage().set_item("refresh_token", &refresh_token.to_string())
+    WebPage::local_storage()
+        .set_item("refresh_token", &refresh_token.to_string())
         .expect("Unable to set refresh_token to session storage.");
 }
 

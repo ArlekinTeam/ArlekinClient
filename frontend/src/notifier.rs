@@ -49,14 +49,12 @@ pub fn connect() {
 
 fn reconnect() {
     WEB_SOCKET.set(Arc::new(None));
-    api::get("accounts/getws").send(
-        move |r: ApiResponse<GetWsResponseData>| match r {
-            ApiResponse::Ok(r) => {
-                connect_worker(r).unwrap();
-            }
-            ApiResponse::BadRequest(_) => todo!(),
-        },
-    );
+    api::get("accounts/getws").send(move |r: ApiResponse<GetWsResponseData>| match r {
+        ApiResponse::Ok(r) => {
+            connect_worker(r).unwrap();
+        }
+        ApiResponse::BadRequest(_) => todo!(),
+    });
 }
 
 fn connect_worker(data: GetWsResponseData) -> Result<(), WebSocketError> {

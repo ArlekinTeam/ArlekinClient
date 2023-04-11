@@ -6,13 +6,16 @@ use yew_router::prelude::*;
 
 use crate::{
     account::{friends_views::friends::Friends, login::Login},
+    api::{self, ApiResponse},
+    app_me::AppMe,
     app_status_bar::AppStatusBar,
     channel_views::channel::Channel,
     common::UnsafeSync,
     direct_messages_views::{direct_messages::DirectMessages, encryption},
-    localization,
-    route::{self, Route}, app_me::AppMe, settings_views::settings::Settings, api::{self, ApiResponse},
-    helpers::prelude::WebPage, notifier,
+    helpers::prelude::WebPage,
+    localization, notifier,
+    route::{self, Route},
+    settings_views::settings::Settings,
 };
 
 lazy_static! {
@@ -66,7 +69,8 @@ impl Component for App {
                 self.logged_in = true;
 
                 USER_ID.set(Arc::new(user_id));
-                WebPage::local_storage().set_item("user_id", &user_id.to_string())
+                WebPage::local_storage()
+                    .set_item("user_id", &user_id.to_string())
                     .expect("Unable to set user_id to session storage.");
 
                 notifier::connect();
@@ -75,7 +79,7 @@ impl Component for App {
                 self.logged_in = false;
                 self.is_settings_displayed = false;
                 self.openned_channel = 0;
-            },
+            }
             Msg::DisplaySettings(display) => self.is_settings_displayed = display,
             Msg::OpennedChannel(openned_channel) => self.openned_channel = openned_channel,
         };
@@ -104,14 +108,12 @@ impl App {
     }
 
     pub fn logout() {
-        api::get("accounts/auth/logout").send_without_ok(
-            move |r: ApiResponse<()>| match r {
-                ApiResponse::Ok(_) => (),
-                ApiResponse::BadRequest(_) => {
-                    log::error!("Failed to logout.");
-                }
-            },
-        );
+        api::get("accounts/auth/logout").send_without_ok(move |r: ApiResponse<()>| match r {
+            ApiResponse::Ok(_) => (),
+            ApiResponse::BadRequest(_) => {
+                log::error!("Failed to logout.");
+            }
+        });
         Self::logout_without_api();
     }
 
@@ -146,7 +148,7 @@ impl App {
             return html! { <>
                 {styles}
                 <Settings />
-            </> }
+            </> };
         }
 
         let content = if self.openned_channel == 0 {

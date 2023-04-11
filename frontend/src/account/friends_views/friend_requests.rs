@@ -31,9 +31,7 @@ impl Component for FriendRequests {
     type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        let s = Self {
-            data: None,
-        };
+        let s = Self { data: None };
         s.load(ctx);
         s
     }

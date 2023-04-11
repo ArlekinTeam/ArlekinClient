@@ -109,44 +109,42 @@ impl Login {
                 "email": email,
                 "passwordHash": general_purpose::STANDARD.encode(password_hash)
             }))
-            .send(
-                move |r: ApiResponse<LoginResponseData>| match r {
-                    ApiResponse::Ok(r) => {
-                        let mut message_encryption_hash = [0u8; 128];
-                        Argon2::new(
-                            Algorithm::default(),
-                            Version::default(),
-                            Params::new(65536, 3, 3, None).unwrap(),
+            .send(move |r: ApiResponse<LoginResponseData>| match r {
+                ApiResponse::Ok(r) => {
+                    let mut message_encryption_hash = [0u8; 128];
+                    Argon2::new(
+                        Algorithm::default(),
+                        Version::default(),
+                        Params::new(65536, 3, 3, None).unwrap(),
+                    )
+                    .hash_password_into(
+                        password.as_bytes(),
+                        format!(
+                            "arlekin{}message",
+                            r.message_encryption_salt
+                                .to_le_bytes()
+                                .iter()
+                                .map(|&x| x as char)
+                                .collect::<String>()
                         )
-                        .hash_password_into(
-                            password.as_bytes(),
-                            format!(
-                                "arlekin{}message",
-                                r.message_encryption_salt
-                                    .to_le_bytes()
-                                    .iter()
-                                    .map(|&x| x as char)
-                                    .collect::<String>()
-                            )
-                            .as_bytes(),
-                            &mut message_encryption_hash,
-                        )
-                        .unwrap();
+                        .as_bytes(),
+                        &mut message_encryption_hash,
+                    )
+                    .unwrap();
 
-                        api::set_refresh_token(r.refresh_token);
-                        wasm_bindgen_futures::spawn_local(async move {
-                            let a = message_encryption_hash;
-                            encryption::init(&a).await;
+                    api::set_refresh_token(r.refresh_token);
+                    wasm_bindgen_futures::spawn_local(async move {
+                        let a = message_encryption_hash;
+                        encryption::init(&a).await;
 
-                            // TODO: remove this. Move to registration.
-                            encryption::put_new_encryption_block(0).await;
-                        });
-                        app_callback.emit(app::Msg::Login(r.user_id));
-                    }
-                    ApiResponse::BadRequest(err) => {
-                        status.emit(Status::with_err(err));
-                    }
-                },
-            );
+                        // TODO: remove this. Move to registration.
+                        encryption::put_new_encryption_block(0).await;
+                    });
+                    app_callback.emit(app::Msg::Login(r.user_id));
+                }
+                ApiResponse::BadRequest(err) => {
+                    status.emit(Status::with_err(err));
+                }
+            });
     }
 }

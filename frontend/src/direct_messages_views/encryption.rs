@@ -150,9 +150,12 @@ pub fn try_load() -> bool {
 }
 
 pub async fn init(encryption_block_hash: &[u8]) {
-    WebPage::local_storage().set_item(
-        "encryption_block_hash", &general_purpose::STANDARD.encode(encryption_block_hash)
-    ).expect("Unable to set encryption_block_hash in session storage.");
+    WebPage::local_storage()
+        .set_item(
+            "encryption_block_hash",
+            &general_purpose::STANDARD.encode(encryption_block_hash),
+        )
+        .expect("Unable to set encryption_block_hash in session storage.");
 
     init_worker(encryption_block_hash).await;
 }

@@ -1,4 +1,4 @@
-use web_sys::{Crypto, Document, Window, Storage};
+use web_sys::{Crypto, Document, Storage, Window};
 
 pub struct WebPage {}
 
