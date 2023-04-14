@@ -88,3 +88,9 @@ button:hover {
     color: #FF7197;
     margin-top: 1em;
 }
+
+svg {
+    height: 1em;
+    vertical-align: middle;
+    margin-top: -0.1em;
+}

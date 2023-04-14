@@ -47,6 +47,7 @@ dependencies = [
  "const_format",
  "getrandom",
  "gloo-net",
+ "gloo-timers",
  "js-sys",
  "lazy_static",
  "log",
@@ -65,6 +66,7 @@ dependencies = [
  "web-sys",
  "yew",
  "yew-router",
+ "yew_icons",
 ]
 
 [[package]]
@@ -1591,4 +1593,13 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "yew_icons"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b99d89a308cef6c47add715c5c20e381b1001ab74990ba9b66990b33a92f77d"
+dependencies = [
+ "yew",
 ]
