@@ -1,7 +1,8 @@
 use std::{
+    collections::HashMap,
     marker::PhantomData,
     num::NonZeroUsize,
-    sync::{Arc, Mutex, atomic::AtomicI64}, collections::HashMap,
+    sync::{atomic::AtomicI64, Arc, Mutex},
 };
 
 use lazy_static::__Deref;
@@ -54,11 +55,11 @@ fn reload_worker(user_id: i64) {
 #[serde(rename_all = "camelCase")]
 pub struct ReceivedUserStatusData {
     user_id: i64,
-    status: UserStatus
+    status: UserStatus,
 }
 
 struct DisplayedComponent {
-    callback: UnsafeSync<Callback<Msg>>
+    callback: UnsafeSync<Callback<Msg>>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -68,7 +69,7 @@ pub struct User {
     pub username: String,
     pub name: String,
     pub avatar_url: String,
-    pub status: Option<UserStatus>
+    pub status: Option<UserStatus>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -76,18 +77,21 @@ pub struct User {
 pub struct UserStatus {
     pub status: i32,
     pub mobile: bool,
-    pub rich_presence: String
+    pub rich_presence: String,
 }
 
 impl UserStatus {
     pub fn icon_html(&self) -> Html {
-        let status = format!("user-status {}", match self.status {
-            0 => "user-status-offline",
-            1 => "user-status-online",
-            2 => "user-status-idle",
-            3 => "user-status-donotdisturb",
-            _ => unimplemented!()
-        });
+        let status = format!(
+            "user-status {}",
+            match self.status {
+                0 => "user-status-offline",
+                1 => "user-status-online",
+                2 => "user-status-idle",
+                3 => "user-status-donotdisturb",
+                _ => unimplemented!(),
+            }
+        );
 
         html! {
             <div class={status}></div>
@@ -126,7 +130,7 @@ where
     pub user_id: i64,
     pub view: Callback<LoadUserContext<T>, Html>,
     pub with_status: bool,
-    pub refresh: bool
+    pub refresh: bool,
 }
 
 impl<T> Component for LoadUser<T>
@@ -196,9 +200,12 @@ where
 
             lock.entry(ctx.props().user_id)
                 .or_insert_with(HashMap::new)
-                .insert(self.id, DisplayedComponent {
-                    callback: UnsafeSync(ctx.link().callback(|m: Msg| m))
-                });
+                .insert(
+                    self.id,
+                    DisplayedComponent {
+                        callback: UnsafeSync(ctx.link().callback(|m: Msg| m)),
+                    },
+                );
         }
 
         self.load(ctx, ctx.props().refresh);
@@ -240,7 +247,7 @@ where
 
             let endpoint = match with_status {
                 true => "accounts/user/withstatus",
-                false => "accounts/user"
+                false => "accounts/user",
             };
 
             let response = api::get(endpoint)
