@@ -1,0 +1,44 @@
+.settings-container {
+    overflow: hidden;
+    height: 100%;
+}
+
+.settings-inner {
+    display: flex;
+    justify-content: stretch;
+    align-items: start;
+    height: 100%;
+}
+
+.settings-navigator {
+    background-color: var(--background-darker);
+    width: 200px;
+    padding-left: 140px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.settings-content {
+    width: calc(100% - 520px);
+    height: 100%;
+}
+
+.settings-exit {
+    width: 180px;
+    height: 100%;
+}
+
+.settings-exit svg {
+    width: 32px;
+    height: 32px;
+    margin: 32px;
+    cursor: pointer;
+    color: gray;
+}
+
+.settings-exit svg:hover {
+    color: white;
+}

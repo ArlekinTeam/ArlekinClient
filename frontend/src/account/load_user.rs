@@ -8,7 +8,7 @@ use lru::LruCache;
 use serde::{Deserialize, Serialize};
 use yew::prelude::*;
 
-use crate::{api, app};
+use crate::api;
 
 lazy_static! {
     static ref REQUESTING_LOCK: async_std::sync::Mutex<()> = async_std::sync::Mutex::new(());
@@ -52,7 +52,6 @@ where
     T: Clone + PartialEq + 'static,
 {
     pub props: T,
-    pub app_callback: Callback<app::Msg>,
     pub user_id: i64,
     pub view: Callback<LoadUserContext<T>, Html>,
 }

@@ -5,17 +5,11 @@ use yew::prelude::*;
 use crate::{
     account::load_user::{LoadUser, LoadUserContext},
     api::{self, ApiResponse},
-    app, localization,
+    localization,
 };
 
 pub struct FriendRequests {
-    props: Props,
     data: Option<FriendRequestsLoadResponseData>,
-}
-
-#[derive(Properties, PartialEq, Clone)]
-pub struct Props {
-    pub app_callback: Callback<app::Msg>,
 }
 
 pub enum Msg {
@@ -34,13 +28,10 @@ pub struct FriendRequestsLoadResponseData {
 
 impl Component for FriendRequests {
     type Message = Msg;
-    type Properties = Props;
+    type Properties = ();
 
     fn create(ctx: &Context<Self>) -> Self {
-        let s = Self {
-            props: ctx.props().clone(),
-            data: None,
-        };
+        let s = Self { data: None };
         s.load(ctx);
         s
     }
@@ -76,7 +67,6 @@ impl Component for FriendRequests {
                             <div class="friends-profile-container">
                                 <LoadUser<()>
                                     props={()}
-                                    app_callback={self.props.app_callback.clone()}
                                     user_id={user_id}
                                     view={Callback::from(process_user_view)}
                                 />
@@ -99,10 +89,9 @@ impl Component for FriendRequests {
                     for e in &data.sent {
                         let user_id = *e;
                         vec.push(html! {
-                            <div class="friends-profile-container">
+                            <div class="user-profile-container friends-profile-container">
                                 <LoadUser<()>
                                     props={()}
-                                    app_callback={self.props.app_callback.clone()}
                                     user_id={user_id}
                                     view={Callback::from(process_user_view)}
                                 />
@@ -137,7 +126,6 @@ impl FriendRequests {
         let callback = ctx.link().callback(Msg::Load);
 
         api::get("accounts/friendrequests").send(
-            self.props.app_callback.clone(),
             move |r: ApiResponse<FriendRequestsLoadResponseData>| match r {
                 ApiResponse::Ok(r) => callback.emit(r),
                 ApiResponse::BadRequest(_) => todo!(),
@@ -152,7 +140,7 @@ impl FriendRequests {
             .body(&json!({
                 "requestedFriendUserId": requested_friend_user_id
             }))
-            .send_without_ok(self.props.app_callback.clone(), move |r| match r {
+            .send_without_ok(move |r| match r {
                 ApiResponse::Ok(_) => callback.emit(()),
                 ApiResponse::BadRequest(_) => todo!(),
             });
@@ -165,7 +153,7 @@ impl FriendRequests {
             .body(&json!({
                 "requestedFriendUserId": requested_friend_user_id
             }))
-            .send_without_ok(self.props.app_callback.clone(), move |r| match r {
+            .send_without_ok(move |r| match r {
                 ApiResponse::Ok(_) => callback.emit(()),
                 ApiResponse::BadRequest(_) => todo!(),
             });
@@ -179,12 +167,12 @@ fn process_user_view(ctx: LoadUserContext<()>) -> Html {
     let user = ctx.user.unwrap();
 
     html! {
-        <div class="friends-profile">
-            <img class="friends-avatar" src={user.avatar_url.clone()} alt={"avatar"} />
+        <div class="user-profile">
+            <img class="user-avatar" src={user.avatar_url.clone()} alt={"avatar"} />
             <div class="select">
-                <label class="friends-name">{user.name.clone()}</label>
+                <label class="user-name">{user.name.clone()}</label>
                 <br/>
-                <span class="friends-username">{"@"}{user.username.clone()}</span>
+                <span class="user-info">{"@"}{user.username.clone()}</span>
             </div>
         </div>
     }

@@ -11,8 +11,10 @@ pub enum Route {
     Login,
     #[at("/friends")]
     Friends,
-    #[at("/chat/:id")]
-    Chat { id: i64 },
+    #[at("/settings")]
+    Settings,
+    #[at("/direct/:id")]
+    Direct { id: i64 },
 }
 
 #[derive(Properties, PartialEq, Clone)]

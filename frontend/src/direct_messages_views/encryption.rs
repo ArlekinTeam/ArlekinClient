@@ -13,15 +13,15 @@ use serde_json::json;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{CryptoKey, CryptoKeyPair};
-use yew::Callback;
 
 use crate::{
-    api::{self, ApiResponse, ErrorData, ErrorDataElement, Platform},
-    app,
-    channel_views::channel::ChannelMessage,
+    api::{self, ErrorData, ErrorDataElement, Platform},
+    channel_views::{channel_content::ChannelMessage, channel_message_error::ChannelMessageError},
     common::UnsafeSync,
     helpers::prelude::WebPage,
 };
+
+use super::encryption_error::EncryptionError;
 
 const RSA_BITS: usize = 4096;
 const AES_BITS: usize = 256;
@@ -35,7 +35,7 @@ lazy_static! {
         Mutex::new(LruCache::new(NonZeroUsize::new(512).unwrap()));
     static ref CACHED_ENCRYPTION_BLOCKS_PRIVATE: Mutex<LruCache<i64, UnsafeSync<Arc<CryptoKey>>>> =
         Mutex::new(LruCache::new(NonZeroUsize::new(100).unwrap()));
-    static ref CACHED_ENCRYPTION_KEYS: Mutex<LruCache<i64, Arc<EncryptionKey>>> =
+    static ref CACHED_ENCRYPTION_KEYS: Mutex<LruCache<(i64, i64), Arc<EncryptionKey>>> =
         Mutex::new(LruCache::new(NonZeroUsize::new(512).unwrap()));
 }
 
@@ -130,7 +130,37 @@ struct MessagesGetResultData {
     messages: Vec<MessagesGetElementResultData>,
 }
 
-pub async fn init(app_callback: Callback<app::Msg>, encryption_block_hash: &[u8]) {
+pub fn try_load() -> bool {
+    let encryption_block_hash = WebPage::local_storage()
+        .get_item("encryption_block_hash")
+        .expect("Unable to get encryption_block_hash from session storage.");
+    if let Some(encryption_block_hash) = encryption_block_hash {
+        let encryption_block_hash = general_purpose::STANDARD
+            .decode(encryption_block_hash)
+            .unwrap();
+
+        wasm_bindgen_futures::spawn_local(async move {
+            init_worker(&encryption_block_hash).await;
+        });
+
+        true
+    } else {
+        false
+    }
+}
+
+pub async fn init(encryption_block_hash: &[u8]) {
+    WebPage::local_storage()
+        .set_item(
+            "encryption_block_hash",
+            &general_purpose::STANDARD.encode(encryption_block_hash),
+        )
+        .expect("Unable to set encryption_block_hash in session storage.");
+
+    init_worker(encryption_block_hash).await;
+}
+
+pub async fn init_worker(encryption_block_hash: &[u8]) {
     let response = api::post("channels/direct/encryption/getmiddlekeys")
         .send_async()
         .await;
@@ -143,7 +173,7 @@ pub async fn init(app_callback: Callback<app::Msg>, encryption_block_hash: &[u8]
             errors.len() == 1
                 && errors.get("").unwrap_or(&ErrorDataElement::default()).code == 3004
             {
-                put_middle_keys(app_callback, encryption_block_hash).await
+                put_middle_keys(encryption_block_hash).await
             } else {
                 todo!();
             }
@@ -250,7 +280,16 @@ pub async fn decrypt_message(
     nonce: String,
     encrypted_text: String,
 ) -> ChannelMessage {
-    let key = get_encryption_key(direct_channel_id, encryption_key_id).await;
+    let key = match get_encryption_key(direct_channel_id, encryption_key_id).await {
+        Ok(key) => key,
+        Err(err) => {
+            return ChannelMessage {
+                message_id: direct_message_id,
+                author_user_id,
+                text: Err(ChannelMessageError::Encryption(err)),
+            }
+        }
+    };
 
     let nonce = general_purpose::STANDARD.decode(nonce).unwrap();
     let mut text = general_purpose::STANDARD.decode(encrypted_text).unwrap();
@@ -260,12 +299,11 @@ pub async fn decrypt_message(
     ChannelMessage {
         message_id: direct_message_id,
         author_user_id,
-        text: Arc::new(String::from_utf8(text).unwrap()),
+        text: Ok(Arc::new(String::from_utf8(text).unwrap())),
     }
 }
 
 pub async fn get_messages(
-    _app_callback: Callback<app::Msg>,
     direct_channel_id: i64,
     before_direct_message_id: i64,
 ) -> Vec<ChannelMessage> {
@@ -304,40 +342,41 @@ pub async fn get_messages(
     result
 }
 
-pub fn send_message(app_callback: Callback<app::Msg>, direct_channel_id: i64, content: String) {
-    wasm_bindgen_futures::spawn_local(async move {
-        // Zero for newest.
-        let key = get_encryption_key(direct_channel_id, 0).await;
+pub async fn send_message(direct_channel_id: i64, content: String) -> i64 {
+    // Zero for newest.
+    let key = get_encryption_key(direct_channel_id, 0).await.unwrap();
 
-        let mut nonce: [u8; 16] = Default::default();
-        WebPage::crypto()
-            .get_random_values_with_u8_array(&mut nonce)
-            .unwrap();
+    let mut nonce: [u8; 16] = Default::default();
+    WebPage::crypto()
+        .get_random_values_with_u8_array(&mut nonce)
+        .unwrap();
 
-        let mut buffer = content.as_bytes().to_vec();
-        encrypt_aes(&key.key, &nonce, &mut buffer).await;
+    let mut buffer = content.as_bytes().to_vec();
+    encrypt_aes(&key.key, &nonce, &mut buffer).await;
 
-        api::put("channels/direct/messages")
-            .body(&json!({
-                "directChannelId": direct_channel_id,
-                "encryptionKeyId": key.encryption_key_id,
-                "nonce": general_purpose::STANDARD.encode(nonce),
-                "encryptedText": general_purpose::STANDARD.encode(buffer)
-            }))
-            .send(
-                app_callback,
-                move |r: ApiResponse<MessagesPutResponseData>| match r {
-                    ApiResponse::Ok(_) => (),
-                    ApiResponse::BadRequest(_) => todo!(),
-                },
-            );
-    });
+    let response = api::put("channels/direct/messages")
+        .body(&json!({
+            "directChannelId": direct_channel_id,
+            "encryptionKeyId": key.encryption_key_id,
+            "nonce": general_purpose::STANDARD.encode(nonce),
+            "encryptedText": general_purpose::STANDARD.encode(buffer)
+        }))
+        .send_async()
+        .await;
+    match response.status() {
+        200 => {
+            let r = response.json::<MessagesPutResponseData>().await.unwrap();
+
+            r.direct_message_id
+        }
+        400 => {
+            todo!();
+        }
+        _ => unreachable!(),
+    }
 }
 
-async fn put_middle_keys(
-    _app_callback: Callback<app::Msg>,
-    encryption_block_hash: &[u8],
-) -> GetMiddleKeysResponseData {
+async fn put_middle_keys(encryption_block_hash: &[u8]) -> GetMiddleKeysResponseData {
     let mut keys = Vec::new();
     let mut encrypted_keys = Vec::new();
 
@@ -366,14 +405,17 @@ async fn put_middle_keys(
     }
 }
 
-async fn get_encryption_key(direct_channel_id: i64, encryption_key_id: i64) -> Arc<EncryptionKey> {
+async fn get_encryption_key(
+    direct_channel_id: i64,
+    encryption_key_id: i64,
+) -> Result<Arc<EncryptionKey>, EncryptionError> {
     loop {
         if let Some(key) = CACHED_ENCRYPTION_KEYS
             .lock()
             .unwrap()
-            .get(&encryption_key_id)
+            .get(&(direct_channel_id, encryption_key_id))
         {
-            return key.clone();
+            return Ok(key.clone());
         }
 
         let response = api::post("channels/direct/encryption/keys/getencryptedkey")
@@ -396,7 +438,7 @@ async fn get_encryption_key(direct_channel_id: i64, encryption_key_id: i64) -> A
                 let key = import_aes(&buffer).await;
 
                 CACHED_ENCRYPTION_KEYS.lock().unwrap().put(
-                    encryption_key_id,
+                    (direct_channel_id, encryption_key_id),
                     Arc::new(EncryptionKey {
                         encryption_key_id: r.encryption_key_id,
                         encryption_block_id: r.encryption_block_id,
@@ -419,8 +461,13 @@ async fn get_encryption_key(direct_channel_id: i64, encryption_key_id: i64) -> A
                         .code
                         == 3003
                 {
-                    put_new_encryption_key(direct_channel_id).await;
-                    continue;
+                    // Ignore only when encryption key is zero.
+                    if encryption_key_id == 0 {
+                        put_new_encryption_key(direct_channel_id).await;
+                        continue;
+                    }
+
+                    return Err(EncryptionError::UnableToRead);
                 }
 
                 todo!();
@@ -546,7 +593,7 @@ async fn put_new_encryption_key_worker(
                 .unwrap();
 
             CACHED_ENCRYPTION_KEYS.lock().unwrap().put(
-                r.encryption_key_id,
+                (direct_channel_id, r.encryption_key_id),
                 Arc::new(EncryptionKey {
                     encryption_key_id: r.encryption_block_id,
                     encryption_block_id: r.encryption_key_id,
@@ -559,6 +606,19 @@ async fn put_new_encryption_key_worker(
                 .put(direct_channel_id, r.encryption_key_id);
         }
         400 => {
+            let errors = response.json::<ErrorData>().await.unwrap().errors;
+            if
+            // ToFast
+            errors.len() == 1
+                && errors
+                    .get("directChannelId")
+                    .unwrap_or(&ErrorDataElement::default())
+                    .code
+                    == 4002
+            {
+                return;
+            }
+
             todo!();
         }
         _ => unreachable!(),

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::channel_views::channel;
+use crate::channel_views::channel_content;
 
 use super::encryption;
 
@@ -16,7 +16,7 @@ pub struct ReceivedDirectMessageData {
 }
 
 pub async fn received_direct_message(data: ReceivedDirectMessageData) {
-    channel::notify_message(
+    channel_content::notify_message(
         data.direct_channel_id,
         encryption::decrypt_message(
             data.direct_channel_id,

@@ -52,8 +52,8 @@ impl Component for Friends {
         let content = match self.state {
             Msg::Online => html! { <FriendsList {app_callback} /> },
             Msg::All => html! { <FriendsList {app_callback} /> },
-            Msg::Pending => html! { <FriendRequests {app_callback} /> },
-            Msg::Add => html! { <AddFriend {app_callback} /> },
+            Msg::Pending => html! { <FriendRequests /> },
+            Msg::Add => html! { <AddFriend /> },
         };
 
         let add_friend_class = match self.state == Msg::Add {
@@ -64,7 +64,6 @@ impl Component for Friends {
         html! {
             <div class="noselect">
                 <route::Router route={Route::Friends} />
-                <link rel="stylesheet" href="/static/css/account/friends.css" />
 
                 <header class="friends-header">
                     <h1>{lang.get("viewAccountFriendsTitle")}</h1>
