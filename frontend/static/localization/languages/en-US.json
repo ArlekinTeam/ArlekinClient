@@ -3,10 +3,11 @@
     "universalName": "English (United States)",
     "identifier": "en-US",
     "translations": {
-        "viewAccountLoginTitle": "Login",
-        "viewAccountLoginEmail": "Email:",
-        "viewAccountLoginPassword": "Password:",
+        "viewAccountLoginTitle": "Log in to Arlekin",
+        "viewAccountLoginEmail": "Email",
+        "viewAccountLoginPassword": "Password",
         "viewAccountLoginSubmit": "Login",
+        "viewAccountLoginWelcomeText": "We are happy to see you again!",
 
         "viewAccountFriendsTitle": "Friends",
         "viewAccountFriendsOnline": "Online",
@@ -22,6 +23,8 @@
         "viewAccountFriendRequestsAccept": "Accept",
         "viewAccountFriendRequestsReject": "Reject",
         "viewAccountFriendRequestsCancel": "Cancel",
-        "viewAccountFriendRequestsEmpty": "Oops... no friend requests! Add someone!"
+        "viewAccountFriendRequestsEmpty": "Oops... no friend requests! Add someone!",
+
+        "invalidEmailOrPassword": "Invalid email or password."
     }
 }

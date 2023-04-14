@@ -10,16 +10,30 @@ impl Status {
         let lang = localization::get_language();
         html! { <p style={"color: green"}>{lang.get(translation_key)}</p> }
     }
-
     pub fn with_err(err: HashMap<String, ErrorDataElement>) -> Html {
-        let mut message = String::new();
-        for (key, value) in err {
-            message.push_str(&key);
-            message.push_str(": ");
-            message.push_str(&value.translation_key);
-            message.push_str("<br>");
+        let lang = localization::get_language();
+        let mut vec = Vec::new();
+        let mut keys = err
+            .iter()
+            .map(|x| &x.1.translation_key)
+            .collect::<Vec<&String>>();
+        keys.dedup();
+        for translation_key in keys {
+            vec.push(html! {
+            <span>{lang.get(translation_key)}</span>});
         }
 
-        html! { <p style={"color: red"}>{message}</p> }
+        html! {
+           <div class="status-error">
+               {vec}
+           </div>
+        }
+    }
+    pub fn default_html() -> Html {
+        html! {
+            <div class="status-error">
+                <br/>
+            </div>
+        }
     }
 }

@@ -90,3 +90,14 @@ button:hover {
     background-color: var(--button-selected-color);
     color: var(--button-selected-text-color);
 }
+
+.status-error {
+    color: #FF7197;
+    margin-top: 1em;
+}
+
+svg {
+    height: 1em;
+    vertical-align: middle;
+    margin-top: -0.1em;
+}

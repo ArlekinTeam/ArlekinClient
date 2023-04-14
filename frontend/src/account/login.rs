@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use uuid::Uuid;
 use yew::prelude::*;
+use yew_icons::{Icon, IconId};
 
 use crate::{
     api::{self, ApiResponse},
@@ -44,7 +45,7 @@ impl Component for Login {
     fn create(ctx: &Context<Self>) -> Self {
         Self {
             props: ctx.props().clone(),
-            status: Default::default(),
+            status: Status::default_html(),
         }
     }
 
@@ -65,19 +66,29 @@ impl Component for Login {
         html! {
             <>
                 <Router route={Route::Login} />
-
-                <h1>{lang.get("viewAccountLoginTitle")}</h1>
-                <label for="email">{lang.get("viewAccountLoginEmail")}</label>
-                <br/>
-                <input name="email" id="email" type="email" />
-                <br/>
-                <label for="password">{lang.get("viewAccountLoginPassword")}</label>
-                <br/>
-                <input name="password" id="password" type="password" />
-                <br/><br/>
-                <button onclick={ctx.link().callback(|_| Msg::Submit)}>{lang.get("viewAccountLoginSubmit")}</button>
-
-                {self.status.clone()}
+                <link rel="stylesheet" href="/static/css/account/login.css" />
+                <div class="login-container">
+                    <div id="login-items-main">
+                        <div id="login-items">
+                            <h1 id="login-header">{lang.get("viewAccountLoginTitle")}</h1>
+                            <h3 id="welcome-text">
+                                <Icon icon_id={IconId::FontAwesomeSolidHandSparkles}/>
+                                {" "}
+                                {lang.get("viewAccountLoginWelcomeText")}
+                            </h3>
+                            <input placeholder={lang.get("viewAccountLoginEmail")} name="email" id="email" type="email" />
+                            <br/>
+                            <input placeholder={lang.get("viewAccountLoginPassword")} name="password" id="password" type="password" />
+                            <br/><br/>
+                            <button onclick={ctx.link().callback(|_| Msg::Submit)}>
+                                <Icon icon_id={IconId::LucideLogIn}/>
+                                {" "}
+                                {lang.get("viewAccountLoginSubmit")}
+                            </button>
+                            {self.status.clone()}
+                        </div>
+                    </div>
+                </div>
             </>
         }
     }
