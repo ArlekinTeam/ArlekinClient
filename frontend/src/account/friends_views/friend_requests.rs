@@ -69,6 +69,8 @@ impl Component for FriendRequests {
                                     props={()}
                                     user_id={user_id}
                                     view={Callback::from(process_user_view)}
+                                    with_status={false}
+                                    refresh={false}
                                 />
 
                                 <div>
@@ -94,6 +96,8 @@ impl Component for FriendRequests {
                                     props={()}
                                     user_id={user_id}
                                     view={Callback::from(process_user_view)}
+                                    with_status={false}
+                                    refresh={false}
                                 />
 
                                 <button onclick={ctx.link().callback(move |_| Msg::Reject(user_id))}>{

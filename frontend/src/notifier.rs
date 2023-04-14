@@ -12,7 +12,7 @@ use crate::{
     api::{self, ApiResponse},
     common::UnsafeSync,
     direct_messages_views,
-    helpers::prelude::*,
+    helpers::prelude::*, account,
 };
 
 lazy_static! {
@@ -115,8 +115,9 @@ async fn process_message(message: wasm_sockets::Message) {
         // ReceivedDirectMessage.
         0 => direct_messages_views::notifier_process::received_direct_message(
             from_value(data).unwrap(),
-        ),
+        ).await,
+        // ReceivedUserStatus
+        1 => account::load_user::received_user_status(from_value(data).unwrap()),
         _ => unimplemented!(),
-    }
-    .await;
+    };
 }
