@@ -211,6 +211,8 @@ impl Component for ChannelContent {
                                 props={message.clone()}
                                 user_id={message.author_user_id}
                                 view={Callback::from(process_message_view)}
+                                with_status={false}
+                                refresh={false}
                             />
                         }
                     });

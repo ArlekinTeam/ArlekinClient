@@ -9,6 +9,7 @@ use wasm_bindgen::JsCast;
 use wasm_sockets::WebSocketError;
 
 use crate::{
+    account,
     api::{self, ApiResponse},
     common::UnsafeSync,
     direct_messages_views,
@@ -113,10 +114,14 @@ async fn process_message(message: wasm_sockets::Message) {
     let data = json["data"].clone();
     match code {
         // ReceivedDirectMessage.
-        0 => direct_messages_views::notifier_process::received_direct_message(
-            from_value(data).unwrap(),
-        ),
+        0 => {
+            direct_messages_views::notifier_process::received_direct_message(
+                from_value(data).unwrap(),
+            )
+            .await
+        }
+        // ReceivedUserStatus
+        1 => account::load_user::received_user_status(from_value(data).unwrap()),
         _ => unimplemented!(),
-    }
-    .await;
+    };
 }

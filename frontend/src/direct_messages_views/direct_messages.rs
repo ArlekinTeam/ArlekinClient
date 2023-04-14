@@ -87,6 +87,8 @@ impl Component for DirectMessages {
                                 props={()}
                                 user_id={data.user_id}
                                 view={Callback::from(process_user_channel_view)}
+                                with_status={true}
+                                refresh={false}
                             />
                         </div>
                     })
@@ -125,14 +127,13 @@ fn process_user_channel_view(ctx: LoadUserContext<()>) -> Html {
     }
     let user = ctx.user.unwrap();
 
-    process_channel_view(&user.name, &user.avatar_url)
-}
-
-fn process_channel_view(name: &str, avatar_url: &str) -> Html {
     html! {
         <div class="user-profile">
-            <img class="user-avatar noselect" src={avatar_url.to_owned()} alt={"avatar"} />
-            <span class="user-name">{name.to_owned()}</span>
+            <img class="user-avatar noselect" src={user.avatar_url.to_owned()} alt={"avatar"} />
+            {user.status.as_ref().unwrap().icon_html()}
+            <div class="user-content">
+                <span class="user-name">{user.name.to_owned()}</span>
+            </div>
         </div>
     }
 }

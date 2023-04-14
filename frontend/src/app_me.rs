@@ -15,6 +15,8 @@ pub fn app_me() -> Html {
                     props={()}
                     user_id={App::user_id()}
                     view={Callback::from(process_user_view)}
+                    with_status={true}
+                    refresh={true}
                 />
             </div>
             <div class="app-me-buttons">
@@ -33,6 +35,7 @@ fn process_user_view(ctx: LoadUserContext<()>) -> Html {
     html! {
         <div class="user-profile">
             <img class="user-avatar" src={user.avatar_url.clone()} alt={"avatar"} />
+            {user.status.as_ref().unwrap().icon_html()}
             <div class="user-content">
                 <p class="app-me-user-name user-name">{user.name.clone()}</p>
                 <p class="app-me-user-info user-info">{"@"}{user.username.clone()}</p>
