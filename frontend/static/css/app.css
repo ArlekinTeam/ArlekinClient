@@ -17,6 +17,58 @@
 }
 
 .app-navigator {
+    background-color: var(--background-darker3);
+    height: 100%;
+}
+
+.app-navigator-inner {
+    width: 72px;
+    height: 100%;
+}
+
+.app-navigator-button-container {
+    width: 100%;
+    margin-top: 0.2em;
+    margin-bottom: 0.2em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.app-navigator-button {
+    width: 48px;
+    height: 48px;
+    border-radius: 100%;
+    cursor: pointer;
+}
+
+.app-navigator-button:hover {
+    border-radius: 7.5px;
+}
+
+.app-navigator-image {
+    width: 100%;
+    height: 100%;
+}
+
+.app-navigator-button-container .navigator-notification {
+    min-width: 10px;
+    height: 10px;
+    padding: 3px;
+    border-radius: 100%;
+    margin-left: -19px;
+    margin-top: 36px;
+    border: 3px solid var(--background-darker2);
+    background-color: #f23f42;
+    font-size: 11px;
+    font-weight: 900;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.app-tree-navigator {
     background-color: var(--background-darker);
     width: 240px;
     height: 100%;
@@ -24,13 +76,13 @@
     flex-direction: column;
 }
 
-.app-navigator-content {
+.app-tree-navigator-content {
     overflow-x: hidden;
     overflow-y: auto;
     height: 100%;
 }
 
-.app-navigator-inner {
+.app-tree-navigator-inner {
     min-height: 100%;
     display: flex;
     flex-direction: column;

@@ -6,6 +6,7 @@ use std::{
 use arc_cell::ArcCell;
 use gloo_timers::callback::Timeout;
 use lru::LruCache;
+use serde_json::json;
 use wasm_bindgen::prelude::Closure;
 use wasm_bindgen::JsCast;
 use yew::prelude::*;
@@ -15,7 +16,7 @@ use crate::{
     common::UnsafeSync,
     direct_messages_views::encryption,
     helpers::prelude::*,
-    localization,
+    localization, api::{self, ApiResponse}, navigator,
 };
 
 use super::channel_message_error::ChannelMessageError;
@@ -36,7 +37,12 @@ pub fn notify_message(channel_id: i64, message: ChannelMessage) {
 
         lock.messages.push(message);
     }
-    refresh_channel(channel_id);
+
+    if !refresh_channel(channel_id) || !WebPage::is_focused() {
+        navigator::add_pings(channel_id, 1, 0);
+    } else {
+        navigator::update_activity(channel_id);
+    }
 }
 
 pub fn edit_message(channel_id: i64, message_id: i64, message: ChannelMessage) {
@@ -70,13 +76,15 @@ pub fn set_scroll(channel_id: i64, scroll: i32) {
     refresh_channel(channel_id);
 }
 
-fn refresh_channel(channel_id: i64) {
+fn refresh_channel(channel_id: i64) -> bool {
     let opened_channel = OPENED_CHANNEL.get();
     if let Some((id, callback)) = opened_channel.as_ref() {
         if channel_id == *id {
             callback.0.emit(Msg::Refresh);
+            return true;
         }
     }
+    false
 }
 
 pub struct ChannelContent {
@@ -139,7 +147,7 @@ impl Component for ChannelContent {
         let callback = ctx.link().callback(|m| m);
         let scroll_event = Closure::new(move || {
             let scroll = Element::by_id("channel-content-scroll");
-            callback.emit(Msg::SetScroll(scroll.scroll_height() - scroll.scroll_top()));
+            callback.emit(Msg::SetScroll(scroll.scroll_height() - scroll.scroll_top() - scroll.client_height()));
 
             if scroll.scroll_top() < 500 {
                 callback.emit(Msg::LoadUp);
@@ -164,7 +172,7 @@ impl Component for ChannelContent {
             }
             Msg::Load(messages) => self.load_set(ctx, messages),
             Msg::ChangeChannel => self.change_channel(ctx),
-            Msg::SetScroll(scroll) => self.set_scroll(scroll),
+            Msg::SetScroll(scroll) => self.set_scroll(ctx, scroll),
             Msg::LoadUp => {
                 self.load_up(ctx);
                 return false;
@@ -240,7 +248,7 @@ impl Component for ChannelContent {
 
         if let Some(cache) = &self.cache {
             let lock = cache.lock().unwrap();
-            scroll.set_scroll_top(scroll.scroll_height() - lock.scroll_y);
+            scroll.set_scroll_top(scroll.scroll_height() - lock.scroll_y - scroll.client_height());
         }
     }
 }
@@ -325,11 +333,28 @@ impl ChannelContent {
         }
     }
 
-    fn set_scroll(&self, scroll: i32) {
+    fn set_scroll(&self, ctx: &Context<Self>, scroll: i32) {
         if let Some(cache) = &self.cache {
             let mut lock = cache.lock().unwrap();
             lock.scroll_y = scroll;
+
+            // Send ack.
+            if scroll == 0 && WebPage::is_focused() {
+                let last = lock.messages[lock.messages.len() - 1].message_id;
+                self.send_ack(ctx, last);
+                navigator::add_pings(ctx.props().channel_id, i64::MIN, last);
+            }
         }
+    }
+
+    fn send_ack(&self, ctx: &Context<Self>, last_read_message_id: i64) {
+        api::post("channels/direct/messages/ack").body(&json!({
+            "directChannelId": ctx.props().channel_id,
+            "lastReadDirectMessageId": last_read_message_id
+        })).send_without_ok(move |r| match r {
+            ApiResponse::Ok(_) => (),
+            ApiResponse::BadRequest(_) => todo!(),
+        });
     }
 }
 

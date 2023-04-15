@@ -9,7 +9,7 @@ use crate::{
     direct_messages_views::encryption,
     helpers::prelude::*,
     localization,
-    route::{self, Route},
+    route::{self, Route}, navigator,
 };
 
 use super::channel_content::{self, ChannelMessage};
@@ -98,6 +98,8 @@ impl Channel {
                         text: Ok(Arc::new(value)),
                     },
                 );
+
+                navigator::add_pings(channel_id, i64::MIN, message_id);
             });
         })
         .forget();

@@ -11,6 +11,7 @@ pub mod localization;
 pub mod notifier;
 pub mod route;
 pub mod settings_views;
+pub mod navigator;
 
 #[macro_use]
 extern crate lazy_static;
