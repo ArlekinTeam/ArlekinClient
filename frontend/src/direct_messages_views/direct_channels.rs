@@ -1,15 +1,22 @@
+use std::sync::{Arc, Mutex};
+
+use arc_cell::ArcCell;
 use serde::{Deserialize, Serialize};
 use yew::prelude::*;
 
+lazy_static! {
+    pub(crate) static ref INSTANCE: ArcCell<Option<UnsafeSync<Callback<Msg>>>> = ArcCell::default();
+}
+
 use crate::{
     account::load_user::{LoadUser, LoadUserContext},
-    api::{self, ApiResponse},
     app,
+    common::UnsafeSync,
+    navigator::{self, NavigatorCache},
 };
 
-pub struct DirectMessages {
-    props: Props,
-    data: Option<DirectMessagesLoadResponseData>,
+pub struct DirectChannels {
+    cache: Arc<Mutex<NavigatorCache>>,
 }
 
 #[derive(Properties, PartialEq, Clone)]
@@ -18,56 +25,57 @@ pub struct Props {
 }
 
 pub enum Msg {
-    Load(DirectMessagesLoadResponseData),
-    Reload,
+    Refresh,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct DirectMessagesLoadResponseData {
-    direct_channels: Vec<DirectChannelResponseData>,
+pub struct DirectChannelsLoadResponseData {
+    pub direct_channels: Vec<DirectChannelResponseData>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct DirectChannelResponseData {
-    direct_channel_id: i64,
-    is_group: bool,
-    user_id: i64,
-    group_data: Option<GroupResponseData>,
+pub struct DirectChannelResponseData {
+    pub unread_count: i64,
+    pub recent_activity: i64,
+    pub is_group: bool,
+    pub user_id: i64,
+    pub group_data: Option<GroupResponseData>,
+    pub direct_channel_id: i64,
+    pub last_read_direct_message_id: i64,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct GroupResponseData {
-    name: String,
-    avatar_url: String,
+pub struct GroupResponseData {
+    pub name: String,
+    pub avatar_url: String,
     user_count: i32,
 }
 
-impl Component for DirectMessages {
+impl Component for DirectChannels {
     type Message = Msg;
     type Properties = Props;
 
     fn create(ctx: &Context<Self>) -> Self {
         let s = Self {
-            props: ctx.props().clone(),
-            data: None,
+            cache: navigator::CACHED_DATA.get(),
         };
-        s.load(ctx);
+        INSTANCE.set(Arc::new(Some(UnsafeSync(ctx.link().callback(|m| m)))));
         s
     }
 
-    fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, _: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::Reload => self.load(ctx),
-            Msg::Load(data) => self.data = Some(data),
+            Msg::Refresh => (),
         };
         true
     }
 
-    fn view(&self, _: &Context<Self>) -> Html {
-        let data = match &self.data {
+    fn view(&self, ctx: &Context<Self>) -> Html {
+        let lock = self.cache.lock().unwrap();
+        let data = match &lock.direct_channels {
             Some(data) => {
                 let mut vec = Vec::new();
 
@@ -76,12 +84,21 @@ impl Component for DirectMessages {
                         todo!();
                     }
 
-                    let a = self.props.app_callback.clone();
+                    let a = ctx.props().app_callback.clone();
                     let channel_id = data.direct_channel_id;
+
+                    let class = format!(
+                        "user-profile-container channel-{}",
+                        match data.unread_count == 0 {
+                            true => "read",
+                            false => "unread",
+                        }
+                    );
+
                     vec.push(html! {
                         <div
                             onclick={Callback::from(move |_| a.emit(app::Msg::OpennedChannel(channel_id)))}
-                            class="user-profile-container"
+                            class={class}
                         >
                             <LoadUser<()>
                                 props={()}
@@ -99,25 +116,16 @@ impl Component for DirectMessages {
             None => vec![html! { <p>{"Loading..."}</p> }],
         };
 
-        let a = self.props.app_callback.clone();
+        let a = ctx.props().app_callback.clone();
         html! { <>
             <p onclick={Callback::from(move |_| a.emit(app::Msg::OpennedChannel(0)))}>{"Friends"}</p>
 
             {data}
         </> }
     }
-}
 
-impl DirectMessages {
-    fn load(&self, ctx: &Context<Self>) {
-        let callback = ctx.link().callback(Msg::Load);
-
-        api::get("channels/direct/todo2").send(
-            move |r: ApiResponse<DirectMessagesLoadResponseData>| match r {
-                ApiResponse::Ok(r) => callback.emit(r),
-                ApiResponse::BadRequest(_) => todo!(),
-            },
-        );
+    fn destroy(&mut self, _: &Context<Self>) {
+        INSTANCE.set(Arc::new(None));
     }
 }
 

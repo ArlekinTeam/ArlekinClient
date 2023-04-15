@@ -8,7 +8,7 @@ use crate::{
     channel_views::channel_content::ChannelContent,
     direct_messages_views::encryption,
     helpers::prelude::*,
-    localization,
+    localization, navigator,
     route::{self, Route},
 };
 
@@ -98,6 +98,8 @@ impl Channel {
                         text: Ok(Arc::new(value)),
                     },
                 );
+
+                navigator::add_pings(channel_id, i64::MIN, message_id);
             });
         })
         .forget();

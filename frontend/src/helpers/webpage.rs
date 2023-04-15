@@ -14,6 +14,11 @@ impl WebPage {
     }
 
     #[inline]
+    pub fn is_focused() -> bool {
+        Self::document().has_focus().unwrap()
+    }
+
+    #[inline]
     pub fn crypto() -> Crypto {
         Self::window()
             .crypto()

@@ -11,9 +11,11 @@ use crate::{
     app_status_bar::AppStatusBar,
     channel_views::channel::Channel,
     common::UnsafeSync,
-    direct_messages_views::{direct_messages::DirectMessages, encryption},
+    direct_messages_views::{direct_channels::DirectChannels, encryption},
     helpers::prelude::WebPage,
-    localization, notifier,
+    localization,
+    navigator::Navigator,
+    notifier,
     route::{self, Route},
     settings_views::settings::Settings,
 };
@@ -163,10 +165,11 @@ impl App {
 
                 <div class="app">
                     <div class="app-inner">
-                        <div class="app-navigator">
-                            <div class="app-navigator-content">
-                                <div class="app-navigator-content-inner">
-                                    <DirectMessages app_callback={app_callback} />
+                        <Navigator app_callback={app_callback.clone()} />
+                        <div class="app-tree-navigator">
+                            <div class="app-tree-navigator-content">
+                                <div class="app-tree-navigator-content-inner">
+                                    <DirectChannels app_callback={app_callback} />
                                 </div>
                             </div>
 
