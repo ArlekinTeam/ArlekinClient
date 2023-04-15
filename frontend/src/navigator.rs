@@ -1,14 +1,21 @@
-use std::sync::{Mutex, Arc};
+use std::sync::{Arc, Mutex};
 
 use arc_cell::ArcCell;
 use yew::prelude::*;
 
-use crate::{direct_messages_views::direct_channels::{DirectChannelsLoadResponseData, self}, api::{ApiResponse, self}, account::load_user::{LoadUser, LoadUserContext}, app, common::UnsafeSync};
+use crate::{
+    account::load_user::{LoadUser, LoadUserContext},
+    api::{self, ApiResponse},
+    app,
+    common::UnsafeSync,
+    direct_messages_views::direct_channels::{self, DirectChannelsLoadResponseData},
+};
 
 lazy_static! {
-    pub(crate) static ref CACHED_DATA: ArcCell<Mutex<NavigatorCache>> = ArcCell::new(Arc::new(Mutex::new(NavigatorCache {
-        direct_channels: None,
-    })));
+    pub(crate) static ref CACHED_DATA: ArcCell<Mutex<NavigatorCache>> =
+        ArcCell::new(Arc::new(Mutex::new(NavigatorCache {
+            direct_channels: None,
+        })));
     static ref INSTANCE: ArcCell<Option<UnsafeSync<Callback<Msg>>>> = ArcCell::default();
 }
 
@@ -84,7 +91,7 @@ pub struct Navigator {
 
 pub enum Msg {
     Refresh,
-    Reload
+    Reload,
 }
 
 pub(crate) struct NavigatorCache {
@@ -183,13 +190,11 @@ impl Navigator {
     fn load(&self, ctx: &Context<Self>) {
         let callback = ctx.link().callback(|_: ()| Msg::Refresh);
 
-        api::get("channels/direct").send(
-            move |r: ApiResponse<DirectChannelsLoadResponseData>| match r {
+        api::get("channels/direct").send(move |r: ApiResponse<DirectChannelsLoadResponseData>| {
+            match r {
                 ApiResponse::Ok(mut r) => {
-                    r.direct_channels.sort_by(
-                        |a, b|
-                        b.recent_activity.cmp(&a.recent_activity)
-                    );
+                    r.direct_channels
+                        .sort_by(|a, b| b.recent_activity.cmp(&a.recent_activity));
 
                     let cache = CACHED_DATA.get();
                     let mut lock = cache.lock().unwrap();
@@ -199,10 +204,10 @@ impl Navigator {
                     if let Some(instance) = &*direct_channels::INSTANCE.get() {
                         instance.0.emit(direct_channels::Msg::Refresh);
                     }
-                },
+                }
                 ApiResponse::BadRequest(_) => todo!(),
-            },
-        );
+            }
+        });
     }
 }
 

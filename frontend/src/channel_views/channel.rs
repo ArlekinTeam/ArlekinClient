@@ -8,8 +8,8 @@ use crate::{
     channel_views::channel_content::ChannelContent,
     direct_messages_views::encryption,
     helpers::prelude::*,
-    localization,
-    route::{self, Route}, navigator,
+    localization, navigator,
+    route::{self, Route},
 };
 
 use super::channel_content::{self, ChannelMessage};

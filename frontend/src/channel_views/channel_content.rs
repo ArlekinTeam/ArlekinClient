@@ -13,10 +13,11 @@ use yew::prelude::*;
 
 use crate::{
     account::load_user::{LoadUser, LoadUserContext},
+    api::{self, ApiResponse},
     common::UnsafeSync,
     direct_messages_views::encryption,
     helpers::prelude::*,
-    localization, api::{self, ApiResponse}, navigator,
+    localization, navigator,
 };
 
 use super::channel_message_error::ChannelMessageError;
@@ -147,7 +148,9 @@ impl Component for ChannelContent {
         let callback = ctx.link().callback(|m| m);
         let scroll_event = Closure::new(move || {
             let scroll = Element::by_id("channel-content-scroll");
-            callback.emit(Msg::SetScroll(scroll.scroll_height() - scroll.scroll_top() - scroll.client_height()));
+            callback.emit(Msg::SetScroll(
+                scroll.scroll_height() - scroll.scroll_top() - scroll.client_height(),
+            ));
 
             if scroll.scroll_top() < 500 {
                 callback.emit(Msg::LoadUp);
@@ -348,13 +351,15 @@ impl ChannelContent {
     }
 
     fn send_ack(&self, ctx: &Context<Self>, last_read_message_id: i64) {
-        api::post("channels/direct/messages/ack").body(&json!({
-            "directChannelId": ctx.props().channel_id,
-            "lastReadDirectMessageId": last_read_message_id
-        })).send_without_ok(move |r| match r {
-            ApiResponse::Ok(_) => (),
-            ApiResponse::BadRequest(_) => todo!(),
-        });
+        api::post("channels/direct/messages/ack")
+            .body(&json!({
+                "directChannelId": ctx.props().channel_id,
+                "lastReadDirectMessageId": last_read_message_id
+            }))
+            .send_without_ok(move |r| match r {
+                ApiResponse::Ok(_) => (),
+                ApiResponse::BadRequest(_) => todo!(),
+            });
     }
 }
 

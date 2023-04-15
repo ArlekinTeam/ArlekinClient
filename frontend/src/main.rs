@@ -8,10 +8,10 @@ pub mod common;
 pub mod direct_messages_views;
 pub mod helpers;
 pub mod localization;
+pub mod navigator;
 pub mod notifier;
 pub mod route;
 pub mod settings_views;
-pub mod navigator;
 
 #[macro_use]
 extern crate lazy_static;

@@ -10,7 +10,9 @@ lazy_static! {
 
 use crate::{
     account::load_user::{LoadUser, LoadUserContext},
-    app, navigator::{NavigatorCache, self}, common::UnsafeSync,
+    app,
+    common::UnsafeSync,
+    navigator::{self, NavigatorCache},
 };
 
 pub struct DirectChannels {
@@ -66,7 +68,7 @@ impl Component for DirectChannels {
 
     fn update(&mut self, _: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
-            Msg::Refresh => ()
+            Msg::Refresh => (),
         };
         true
     }
@@ -85,10 +87,13 @@ impl Component for DirectChannels {
                     let a = ctx.props().app_callback.clone();
                     let channel_id = data.direct_channel_id;
 
-                    let class = format!("user-profile-container channel-{}", match data.unread_count == 0 {
-                        true => "read",
-                        false => "unread",
-                    });
+                    let class = format!(
+                        "user-profile-container channel-{}",
+                        match data.unread_count == 0 {
+                            true => "read",
+                            false => "unread",
+                        }
+                    );
 
                     vec.push(html! {
                         <div

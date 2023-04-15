@@ -13,10 +13,11 @@ use crate::{
     common::UnsafeSync,
     direct_messages_views::{direct_channels::DirectChannels, encryption},
     helpers::prelude::WebPage,
-    localization, notifier,
+    localization,
+    navigator::Navigator,
+    notifier,
     route::{self, Route},
     settings_views::settings::Settings,
-    navigator::Navigator
 };
 
 lazy_static! {
