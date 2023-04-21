@@ -13,7 +13,9 @@ serde = "1.0.158"
 serde_json = "1.0.94"
 wasm-bindgen = "0.2.84"
 yew = { version = "0.20.0", features = ["csr"] }
-web-sys = { version = "0.3.61", features = ["Crypto", "SubtleCrypto", "CryptoKeyPair", "CryptoKey", "Storage"] }
+web-sys = { version = "0.3.61", features = [
+    "Crypto", "SubtleCrypto", "CryptoKeyPair", "CryptoKey", "Storage", "FileList"
+] }
 wasm-logger = "0.2.0"
 log = "0.4.17"
 argon2 = "0.5.0"

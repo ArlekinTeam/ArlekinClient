@@ -17,10 +17,10 @@ use crate::{
     common::UnsafeSync,
     direct_messages_views::encryption,
     helpers::prelude::*,
-    localization, navigator,
+    navigator,
 };
 
-use super::channel_message_error::ChannelMessageError;
+use super::channel_message::ChannelMessage;
 
 lazy_static! {
     static ref OPENED_CHANNEL: ArcCell<Option<(i64, UnsafeSync<Callback<Msg>>)>> =
@@ -108,36 +108,10 @@ pub enum Msg {
     LoadUp,
 }
 
-#[derive(Clone, PartialEq)]
-pub struct ChannelMessage {
-    pub message_id: i64,
-    pub author_user_id: i64,
-    pub text: Result<Arc<String>, ChannelMessageError>,
-}
-
 struct ChannelCache {
     messages: Vec<ChannelMessage>,
     is_scrolled_to_top: bool,
     scroll_y: i32,
-}
-
-impl ChannelMessage {
-    fn text_into_html(&self) -> Html {
-        match self.text.clone() {
-            Ok(text) => match self.message_id > 0 {
-                true => html! { text },
-                false => html! {
-                    <span class="message-sent">{text}</span>
-                },
-            },
-            Err(err) => {
-                let lang = localization::get_language();
-                html! {
-                    <span class="message-error">{lang.get(err.to_translation_key())}</span>
-                }
-            }
-        }
-    }
 }
 
 impl Component for ChannelContent {
@@ -211,7 +185,7 @@ impl Component for ChannelContent {
                         count += 1;
                         html! {
                             <div class="channel-message">
-                                <label class="message-without-avatar">{message.text_into_html()}</label>
+                                <label class="message-without-avatar">{message.get_html().clone()}</label>
                             </div>
                         }
                     } else {
@@ -375,7 +349,7 @@ fn process_message_view(ctx: LoadUserContext<ChannelMessage>) -> Html {
             <div>
                 <label class="message-name">{user.name.clone()}</label>
                 <br/>
-                <label>{ctx.props.text_into_html()}</label>
+                <label>{ctx.props.get_html().clone()}</label>
             </div>
         </div>
     }

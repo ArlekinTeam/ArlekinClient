@@ -20,3 +20,15 @@ impl<T> From<T> for UnsafeSync<T> {
         Self(value)
     }
 }
+
+impl<T: Clone> Clone for UnsafeSync<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl<T: PartialEq> PartialEq for UnsafeSync<T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.eq(&other.0)
+    }
+}

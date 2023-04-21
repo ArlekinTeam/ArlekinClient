@@ -16,7 +16,7 @@ use web_sys::{CryptoKey, CryptoKeyPair};
 
 use crate::{
     api::{self, ErrorData, ErrorDataElement, Platform},
-    channel_views::{channel_content::ChannelMessage, channel_message_error::ChannelMessageError},
+    channel_views::{channel_message_error::ChannelMessageError, channel_message::ChannelMessage},
     common::UnsafeSync,
     helpers::prelude::WebPage,
 };
@@ -283,11 +283,11 @@ pub async fn decrypt_message(
     let key = match get_encryption_key(direct_channel_id, encryption_key_id).await {
         Ok(key) => key,
         Err(err) => {
-            return ChannelMessage {
-                message_id: direct_message_id,
+            return ChannelMessage::new(
+                direct_message_id,
                 author_user_id,
-                text: Err(ChannelMessageError::Encryption(err)),
-            }
+                Err(ChannelMessageError::Encryption(err)),
+            );
         }
     };
 
@@ -296,11 +296,11 @@ pub async fn decrypt_message(
 
     decrypt_aes(&key.key, &nonce, &mut text).await;
 
-    ChannelMessage {
-        message_id: direct_message_id,
+    ChannelMessage::new(
+        direct_message_id,
         author_user_id,
-        text: Ok(Arc::new(String::from_utf8(text).unwrap())),
-    }
+        Ok(Arc::new(String::from_utf8(text).unwrap())),
+    )
 }
 
 pub async fn get_messages(
@@ -625,7 +625,7 @@ async fn put_new_encryption_key_worker(
     };
 }
 
-async fn export_key(key: &CryptoKey, format: &str) -> Vec<u8> {
+pub async fn export_key(key: &CryptoKey, format: &str) -> Vec<u8> {
     let promise = WebPage::crypto()
         .subtle()
         .export_key(format, key)
@@ -711,7 +711,7 @@ async fn decrypt_rsa(key: &CryptoKey, data: &mut [u8]) -> Vec<u8> {
     buffer.to_vec()
 }
 
-async fn generate_aes() -> CryptoKey {
+pub async fn generate_aes() -> CryptoKey {
     let algorithm = js_sys::Object::new();
     Reflect::set(&algorithm, &"name".into(), &"AES-CTR".into()).unwrap();
     Reflect::set(&algorithm, &"length".into(), &AES_BITS.into()).unwrap();
@@ -746,7 +746,7 @@ async fn import_aes(raw_key: &[u8]) -> CryptoKey {
     JsFuture::from(key_promise).await.unwrap().into()
 }
 
-async fn encrypt_aes(key: &CryptoKey, nonce: &[u8], data: &mut [u8]) {
+pub async fn encrypt_aes(key: &CryptoKey, nonce: &[u8], data: &mut [u8]) {
     let algorithm = encryption_aes_algorithm(nonce);
     let promise = WebPage::crypto()
         .subtle()

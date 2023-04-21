@@ -62,6 +62,12 @@
     color: gray;
 }
 
+.channel-message-embeded {
+    max-width: 650px;
+    max-height: 650px;
+    border-radius: 7.5px;
+}
+
 .channel-unread {
     color: white;
 }
