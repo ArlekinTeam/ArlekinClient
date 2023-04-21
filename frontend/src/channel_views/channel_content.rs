@@ -17,10 +17,10 @@ use crate::{
     common::UnsafeSync,
     direct_messages_views::encryption,
     helpers::prelude::*,
-    localization, navigator,
+    navigator,
 };
 
-use super::channel_message_error::ChannelMessageError;
+use super::channel_message::ChannelMessage;
 
 lazy_static! {
     static ref OPENED_CHANNEL: ArcCell<Option<(i64, UnsafeSync<Callback<Msg>>)>> =
@@ -32,11 +32,13 @@ lazy_static! {
 pub fn notify_message(channel_id: i64, message: ChannelMessage) {
     if let Some(lock) = CACHED_CHANNELS.lock().unwrap().get(&channel_id) {
         let mut lock = lock.lock().unwrap();
-        if lock.messages.last().map(|m| m.message_id) == Some(message.message_id) {
-            return;
+        for m in lock.messages.iter_mut() {
+            if m.1.message_id == message.message_id {
+                return;
+            }
         }
 
-        lock.messages.push(message);
+        lock.messages.push((message.message_id, message));
     }
 
     if !refresh_channel(channel_id) || !WebPage::is_focused() {
@@ -49,21 +51,18 @@ pub fn notify_message(channel_id: i64, message: ChannelMessage) {
 pub fn edit_message(channel_id: i64, message_id: i64, message: ChannelMessage) {
     if let Some(cache) = CACHED_CHANNELS.lock().unwrap().get(&channel_id) {
         let mut lock = cache.lock().unwrap();
-        if lock.messages.last().map(|m| m.message_id) == Some(message.message_id) {
-            if let Some(i) = lock
-                .messages
-                .iter()
-                .position(|x| x.message_id == message_id)
-            {
-                lock.messages.remove(i);
+
+        let id = message.message_id;
+        for i in 0..lock.messages.len() {
+            if lock.messages[i].1.message_id == message_id {
+                lock.messages[i].1 = message;
+                break;
             }
-        } else {
-            for i in 0..lock.messages.len() {
-                if lock.messages[i].message_id == message_id {
-                    lock.messages[i] = message;
-                    break;
-                }
-            }
+        }
+
+        if message_id != id {
+            lock.messages
+                .dedup_by(|a, b| a.1.message_id == b.1.message_id);
         }
     }
     refresh_channel(channel_id);
@@ -108,36 +107,10 @@ pub enum Msg {
     LoadUp,
 }
 
-#[derive(Clone, PartialEq)]
-pub struct ChannelMessage {
-    pub message_id: i64,
-    pub author_user_id: i64,
-    pub text: Result<Arc<String>, ChannelMessageError>,
-}
-
 struct ChannelCache {
-    messages: Vec<ChannelMessage>,
+    messages: Vec<(i64, ChannelMessage)>,
     is_scrolled_to_top: bool,
     scroll_y: i32,
-}
-
-impl ChannelMessage {
-    fn text_into_html(&self) -> Html {
-        match self.text.clone() {
-            Ok(text) => match self.message_id > 0 {
-                true => html! { text },
-                false => html! {
-                    <span class="message-sent">{text}</span>
-                },
-            },
-            Err(err) => {
-                let lang = localization::get_language();
-                html! {
-                    <span class="message-error">{lang.get(err.to_translation_key())}</span>
-                }
-            }
-        }
-    }
 }
 
 impl Component for ChannelContent {
@@ -207,26 +180,31 @@ impl Component for ChannelContent {
                 let mut count = 0;
 
                 for message in cache.messages.iter() {
-                    vec.push(if last_author == message.author_user_id && count < 10 {
+                    let html = if last_author == message.1.author_user_id && count < 10 {
                         count += 1;
                         html! {
                             <div class="channel-message">
-                                <label class="message-without-avatar">{message.text_into_html()}</label>
+                                <label class="message-without-avatar">{message.1.get_html().clone()}</label>
                             </div>
                         }
                     } else {
-                        last_author = message.author_user_id;
+                        last_author = message.1.author_user_id;
                         count = 1;
                         html! {
                             <LoadUser<ChannelMessage>
-                                props={message.clone()}
-                                user_id={message.author_user_id}
+                                props={message.1.clone()}
+                                user_id={message.1.author_user_id}
                                 view={Callback::from(process_message_view)}
                                 with_status={false}
                                 refresh={false}
                             />
                         }
-                    });
+                    };
+                    vec.push(html! {
+                        <div key={message.0}>
+                            {html}
+                        </div>
+                    })
                 }
 
                 vec
@@ -293,7 +271,8 @@ impl ChannelContent {
         }
 
         for message in messages {
-            lock.messages.insert(0, message.clone());
+            lock.messages
+                .insert(0, (message.message_id, message.clone()));
         }
     }
 
@@ -310,7 +289,7 @@ impl ChannelContent {
                 if cache.messages.is_empty() {
                     return;
                 }
-                cache.messages[0].message_id
+                cache.messages[0].1.message_id
             }
             None => return,
         };
@@ -343,7 +322,7 @@ impl ChannelContent {
 
             // Send ack.
             if scroll == 0 && WebPage::is_focused() {
-                let last = lock.messages[lock.messages.len() - 1].message_id;
+                let last = lock.messages[lock.messages.len() - 1].1.message_id;
                 self.send_ack(ctx, last);
                 navigator::add_pings(ctx.props().channel_id, i64::MIN, last);
             }
@@ -375,7 +354,7 @@ fn process_message_view(ctx: LoadUserContext<ChannelMessage>) -> Html {
             <div>
                 <label class="message-name">{user.name.clone()}</label>
                 <br/>
-                <label>{ctx.props.text_into_html()}</label>
+                <label>{ctx.props.get_html().clone()}</label>
             </div>
         </div>
     }

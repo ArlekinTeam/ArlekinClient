@@ -8,8 +8,8 @@ use uuid::Uuid;
 
 use crate::{app::App, app_status_bar::AppStatusBar, common::threading, helpers::prelude::*};
 
-//const DOMAIN: &str = "http://localhost:9080";
-const DOMAIN: &str = "https://test-fsqa7u.noisestudio.net";
+//pub const DOMAIN: &str = "http://localhost:9080";
+pub const DOMAIN: &str = "https://test-fsqa7u.noisestudio.net";
 const API_ENDPOINT: &str = concatcp!(DOMAIN, "/api/v1/");
 
 lazy_static! {
@@ -28,6 +28,7 @@ pub struct ApiRequest {
     endpoint: String,
     query: Option<Vec<(String, String)>>,
     body: Option<String>,
+    body_raw: Option<Vec<u8>>,
 }
 
 pub enum ApiResponse<T> {
@@ -82,6 +83,10 @@ pub fn delete(endpoint: &str) -> ApiRequest {
     ApiRequest::new(ApiRequestKind::Delete, endpoint)
 }
 
+pub fn put_with_own(endpoint: &str) -> ApiRequest {
+    ApiRequest::new_with_own(ApiRequestKind::Put, endpoint)
+}
+
 pub fn try_load() -> bool {
     let value = WebPage::local_storage()
         .get_item("refresh_token")
@@ -104,11 +109,16 @@ pub fn set_refresh_token(refresh_token: Uuid) {
 
 impl ApiRequest {
     fn new(kind: ApiRequestKind, endpoint: &str) -> Self {
+        Self::new_with_own(kind, &Self::final_endpoint(endpoint))
+    }
+
+    fn new_with_own(kind: ApiRequestKind, endpoint: &str) -> Self {
         Self {
             kind,
             endpoint: endpoint.to_owned(),
             query: None,
             body: None,
+            body_raw: None,
         }
     }
 
@@ -131,6 +141,11 @@ impl ApiRequest {
 
     pub fn body<T: serde::ser::Serialize + ?Sized>(mut self, value: &T) -> Self {
         self.body = Some(serde_json::to_string(value).unwrap());
+        self
+    }
+
+    pub fn body_raw(mut self, value: Vec<u8>) -> Self {
+        self.body_raw = Some(value);
         self
     }
 
@@ -225,8 +240,7 @@ impl ApiRequest {
     }
 
     fn create_request(&self) -> Request {
-        let endpoint_string = Self::final_endpoint(&self.endpoint);
-        let endpoint = endpoint_string.as_str();
+        let endpoint = &self.endpoint;
         let mut request = match self.kind {
             ApiRequestKind::Get => Request::get(endpoint),
             ApiRequestKind::Post => Request::post(endpoint),
@@ -239,13 +253,17 @@ impl ApiRequest {
         }
         if let Some(body) = &self.body {
             request = request.body(body);
+            request = request.header("Content-Type", "application/json");
+        } else if let Some(body_raw) = &self.body_raw {
+            let buffer = js_sys::Uint8Array::new_with_length(body_raw.len() as u32);
+            buffer.copy_from(body_raw);
+            request = request.body(buffer);
         }
 
         request
             .credentials(web_sys::RequestCredentials::Include)
             .header("Access-Control-Allow-Origin", DOMAIN)
             .header("Access-Control-Allow-Credentials", "true")
-            .header("Content-Type", "application/json")
     }
 
     async fn create_request_and_send_read_lock(&self) -> Result<Response, gloo_net::Error> {
