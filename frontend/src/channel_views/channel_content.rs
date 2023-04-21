@@ -61,9 +61,8 @@ pub fn edit_message(channel_id: i64, message_id: i64, message: ChannelMessage) {
         }
 
         if message_id != id {
-            lock.messages.dedup_by(
-                |a, b| a.1.message_id == b.1.message_id
-            );
+            lock.messages
+                .dedup_by(|a, b| a.1.message_id == b.1.message_id);
         }
     }
     refresh_channel(channel_id);
@@ -272,7 +271,8 @@ impl ChannelContent {
         }
 
         for message in messages {
-            lock.messages.insert(0, (message.message_id, message.clone()));
+            lock.messages
+                .insert(0, (message.message_id, message.clone()));
         }
     }
 

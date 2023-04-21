@@ -16,7 +16,7 @@ use web_sys::{CryptoKey, CryptoKeyPair};
 
 use crate::{
     api::{self, ErrorData, ErrorDataElement, Platform},
-    channel_views::{channel_message_error::ChannelMessageError, channel_message::ChannelMessage},
+    channel_views::{channel_message::ChannelMessage, channel_message_error::ChannelMessageError},
     common::UnsafeSync,
     helpers::prelude::WebPage,
 };

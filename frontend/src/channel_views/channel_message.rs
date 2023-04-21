@@ -1,12 +1,14 @@
-use std::sync::Arc;
 use lazy_static::__Deref;
+use std::sync::Arc;
 use yew::prelude::*;
 
-use crate::{localization, common::UnsafeSync, api};
+use crate::{api, common::UnsafeSync, localization};
 
 use super::channel_message_error::ChannelMessageError;
 
-static IMAGE_EXTENSIONS: [&str; 10] = ["jpg", "jpeg", "apng", "png", "avif", "gif", "webp", "svg", "bmp", "ico"];
+static IMAGE_EXTENSIONS: [&str; 10] = [
+    "jpg", "jpeg", "apng", "png", "avif", "gif", "webp", "svg", "bmp", "ico",
+];
 static VIDEO_EXTENSIONS: [&str; 4] = ["mp4", "webm", "ogg", "wav"];
 
 #[derive(Clone, PartialEq)]
@@ -18,7 +20,11 @@ pub struct ChannelMessage {
 }
 
 impl ChannelMessage {
-    pub fn new(message_id: i64, author_user_id: i64, content: Result<Arc<String>, ChannelMessageError>) -> Self {
+    pub fn new(
+        message_id: i64,
+        author_user_id: i64,
+        content: Result<Arc<String>, ChannelMessageError>,
+    ) -> Self {
         let html = match &content {
             Ok(content) => {
                 let content = Self::transform_attachments(content);
@@ -28,7 +34,7 @@ impl ChannelMessage {
                         <span class="message-sent">{content}</span>
                     },
                 }
-            },
+            }
             Err(err) => {
                 let lang = localization::get_language();
                 html! {
@@ -87,16 +93,24 @@ impl ChannelMessage {
                 vec.push(html! { <br/> });
             }
 
-            let url = format!("{}/attachments/direct/{}/{}/{}", api::DOMAIN, key, attachment_id, name);
+            let url = format!(
+                "{}/attachments/direct/{}/{}/{}",
+                api::DOMAIN,
+                key,
+                attachment_id,
+                name
+            );
 
             let extension = name.split('.').last().unwrap_or("").to_lowercase();
             if IMAGE_EXTENSIONS.contains(&extension.as_str()) {
                 vec.push(html! { <img class="channel-message-embeded" src={url} /> });
             } else if VIDEO_EXTENSIONS.contains(&extension.as_str()) {
-                vec.push(html! { <video class="channel-message-embeded" controls=true>
-                    <source src={url} type={format!("video/{}", extension)} />
-                    {"Your browser does not support the video tag."}
-                </video> });
+                vec.push(
+                    html! { <video class="channel-message-embeded" controls=true>
+                        <source src={url} type={format!("video/{}", extension)} />
+                        {"Your browser does not support the video tag."}
+                    </video> },
+                );
             } else {
                 vec.push(html! { <div>
                     <p><strong>{name}</strong></p>

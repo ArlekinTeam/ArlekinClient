@@ -2,18 +2,19 @@ use std::sync::Arc;
 
 use base64::{engine::general_purpose, Engine as _};
 use gloo_timers::callback::Timeout;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use web_sys::FileList;
 use yew::prelude::*;
 
 use crate::{
+    api,
     app::App,
     channel_views::channel_content::ChannelContent,
     direct_messages_views::encryption,
     helpers::prelude::*,
     localization, navigator,
-    route::{self, Route}, api,
+    route::{self, Route},
 };
 
 use super::{channel_content, channel_message::ChannelMessage};
@@ -39,7 +40,7 @@ struct CreateBucketResponseData {
     attachment_id: i64,
     name: String,
     storage_domain: String,
-    token: String
+    token: String,
 }
 
 struct FileSenderBucket {
@@ -47,7 +48,7 @@ struct FileSenderBucket {
     sent_message_id: i64,
     channel_id: i64,
     counter: usize,
-    files: Vec<Option<SendedFile>>
+    files: Vec<Option<SendedFile>>,
 }
 
 struct SendedFile {
@@ -128,16 +129,13 @@ impl Channel {
 
         Timeout::new(0, move || {
             wasm_bindgen_futures::spawn_local(async move {
-                let message_id = encryption::send_message(channel_id, message_content.clone()).await;
+                let message_id =
+                    encryption::send_message(channel_id, message_content.clone()).await;
 
                 channel_content::edit_message(
                     channel_id,
                     sent_message_id,
-                    ChannelMessage::new(
-                        message_id,
-                        App::user_id(),
-                        Ok(Arc::new(message_content)),
-                    ),
+                    ChannelMessage::new(message_id, App::user_id(), Ok(Arc::new(message_content))),
                 );
 
                 navigator::add_pings(channel_id, i64::MIN, message_id);
@@ -149,15 +147,13 @@ impl Channel {
     }
 
     fn send_files(message_content: String, sent_message_id: i64, channel_id: i64, files: FileList) {
-        let sender_bucket = Arc::new(async_std::sync::Mutex::new(
-            FileSenderBucket {
-                message_content,
-                sent_message_id,
-                channel_id,
-                counter: files.length() as usize,
-                files: (0..files.length()).map(|_| None).collect()
-            }
-        ));
+        let sender_bucket = Arc::new(async_std::sync::Mutex::new(FileSenderBucket {
+            message_content,
+            sent_message_id,
+            channel_id,
+            counter: files.length() as usize,
+            files: (0..files.length()).map(|_| None).collect(),
+        }));
 
         for i in 0..files.length() {
             let file = files.item(i).unwrap();
@@ -167,12 +163,15 @@ impl Channel {
                 wasm_bindgen_futures::spawn_local(async move {
                     Self::send_file_worker(i, &file, bucket).await;
                 });
-            }).forget();
+            })
+            .forget();
         }
     }
 
     async fn send_file_worker(
-        index: u32, file: &web_sys::File, sender_bucket: Arc<async_std::sync::Mutex<FileSenderBucket>>
+        index: u32,
+        file: &web_sys::File,
+        sender_bucket: Arc<async_std::sync::Mutex<FileSenderBucket>>,
     ) {
         let aes = encryption::generate_aes().await;
         let mut nonce: [u8; 16] = Default::default();
@@ -187,7 +186,7 @@ impl Channel {
                 "size": body.len() as i64,
                 "name":  file.name(),
                 "alternateTextNonce": general_purpose::STANDARD.encode(nonce),
-                "encryptedAlternateText": general_purpose::STANDARD.encode("hi")
+                "encryptedAlternateText": general_purpose::STANDARD.encode("")
             }))
             .send_async()
             .await;
@@ -222,7 +221,7 @@ impl Channel {
         lock.files[index as usize] = Some(SendedFile {
             attachment_id: bucket.attachment_id,
             name: bucket.name,
-            key: general_purpose::URL_SAFE.encode(vec)
+            key: general_purpose::URL_SAFE.encode(vec),
         });
 
         lock.decrement_counter();
@@ -239,7 +238,10 @@ impl FileSenderBucket {
         let mut message_content = self.message_content.clone();
         for file in self.files.iter() {
             let file = file.as_ref().unwrap();
-            message_content.push_str(&format!("<^a/{}/{}/{}>", file.attachment_id, file.name, file.key));
+            message_content.push_str(&format!(
+                "<^a/{}/{}/{}>",
+                file.attachment_id, file.name, file.key
+            ));
         }
 
         Channel::send_message_worker(message_content, self.sent_message_id, self.channel_id);

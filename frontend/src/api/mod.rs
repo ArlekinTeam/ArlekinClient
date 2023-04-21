@@ -28,7 +28,7 @@ pub struct ApiRequest {
     endpoint: String,
     query: Option<Vec<(String, String)>>,
     body: Option<String>,
-    body_raw: Option<Vec<u8>>
+    body_raw: Option<Vec<u8>>,
 }
 
 pub enum ApiResponse<T> {
@@ -118,7 +118,7 @@ impl ApiRequest {
             endpoint: endpoint.to_owned(),
             query: None,
             body: None,
-            body_raw: None
+            body_raw: None,
         }
     }
 
