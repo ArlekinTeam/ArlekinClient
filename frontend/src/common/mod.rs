@@ -1,6 +1,6 @@
 pub mod threading;
 
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 pub struct UnsafeSync<T>(pub T);
 
@@ -12,6 +12,12 @@ impl<T> Deref for UnsafeSync<T> {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<T> DerefMut for UnsafeSync<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 

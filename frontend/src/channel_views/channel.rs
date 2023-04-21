@@ -108,7 +108,7 @@ impl Channel {
         let files = file_input.files().unwrap();
         if files.length() > 0 {
             Self::send_files(message_content, sent_message_id, channel_id, files);
-            file_input.set_files(None);
+            file_input.set_value("");
         } else {
             Self::send_message_worker(message_content, sent_message_id, channel_id);
         }

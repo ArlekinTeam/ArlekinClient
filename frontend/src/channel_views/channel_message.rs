@@ -49,7 +49,7 @@ impl ChannelMessage {
         &self.html
     }
 
-    fn find_pointer(content: &mut str) -> Option<(usize, usize)> {
+    fn find_pointer(content: &str) -> Option<(usize, usize)> {
         if let Some(c) = content.chars().position(|c| c == '<') {
             if let Some(d) = content.chars().position(|c| c == '>') {
                 if d as isize - c as isize > 1 {
@@ -63,22 +63,26 @@ impl ChannelMessage {
     fn transform_attachments(content: &Arc<String>) -> Html {
         let mut vec = Vec::new();
 
-        let mut content = content.clone().deref().clone();
-        if let Some((c, d)) = Self::find_pointer(&mut content) {
+        let mut content = content.deref().as_str();
+        while let Some((c, d)) = Self::find_pointer(content) {
             if !content[c + 1..d].starts_with("^a/") {
-                return html! { content };
+                vec.push(content[..c].into());
+                content = &content[d + 1..];
+                continue;
             }
 
             let mut parts = content[c + 4..d].split('/');
             if parts.clone().count() != 3 {
-                return html! { content };
+                vec.push(content[..c].into());
+                content = &content[d + 1..];
+                continue;
             }
 
             let attachment_id = parts.next().unwrap().parse::<i64>().unwrap();
             let name = parts.next().unwrap();
             let key = parts.next().unwrap();
 
-            vec.push(html! { &content[..c] });
+            vec.push(content[..c].into());
             if c > 0 {
                 vec.push(html! { <br/> });
             }
@@ -99,11 +103,14 @@ impl ChannelMessage {
                 </div> });
             }
 
-            vec.push(html! { &content[d + 1..] });
-        } else {
-            vec.push(html! { content });
+            content = &content[d + 1..];
+
+            if !content.is_empty() {
+                vec.push(html! { <br/> });
+            }
         }
 
+        vec.push(content.into());
         html! { <>{vec}</> }
     }
 }
