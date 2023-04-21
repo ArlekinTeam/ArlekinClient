@@ -180,9 +180,11 @@ impl Channel {
             .get_random_values_with_u8_array(&mut nonce)
             .unwrap();
 
+        let mut body = File::to_bytes_without_exif(file).await;
+
         let mut response = api::put("attachments/direct/bucket")
             .body(&json!({
-                "size": file.size() as i64,
+                "size": body.len() as i64,
                 "name":  file.name(),
                 "alternateTextNonce": general_purpose::STANDARD.encode(nonce),
                 "encryptedAlternateText": general_purpose::STANDARD.encode("hi")
@@ -199,7 +201,6 @@ impl Channel {
             .get_random_values_with_u8_array(&mut nonce)
             .unwrap();
 
-        let mut body = File::to_bytes_without_exif(file).await;
         encryption::encrypt_aes(&aes, &nonce, &mut body).await;
 
         response = api::put_with_own(&format!("{}/attachments", bucket.storage_domain))
